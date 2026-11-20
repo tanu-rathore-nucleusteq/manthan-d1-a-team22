@@ -36,17 +36,18 @@ Hackathon rule: prompts must contain only synthetic or public data. Never paste 
 
 | Date | Author | Tool | Phase | Commit |
 | --- | --- | --- | --- | --- |
-| 2026-11-20 | tanu-rathore02 | Claude Code | Setup | `64bb5fe`, `25a2b44` |
+| 2026-11-20 | tanu-rathore02 | Claude Code | Setup | `f9aa8f0`, `12a897f` |
 
 **Prompt**
 > commit the changes and push to new repo in separate frontend branch
 
 **Outcome**
-- `main` holds only `.gitignore` and `readme.md` (`74c6505`). Everything else is on the `frontend` branch.
-- Added `.gitattributes` to force LF line endings, so Prettier passes on Windows checkouts.
-- Reset `COMMIT_HISTORY.md` for the new repo, then pushed `main` and `frontend` to origin.
+- The push to `main` was rejected: teammate Akash Ping had already pushed the backend scaffold there. Left `main` untouched.
+- Rebuilt `frontend` on top of their `main` (`1475fde`) and dropped the local init commit, so the branch merges cleanly through a PR.
+- Kept their `.gitattributes` (`text=auto`). Prettier now uses `endOfLine: auto` instead, so CRLF checkouts on Windows pass. Added Node, Playwright, IDE and Claude entries to their `.gitignore`.
+- Correction: my first attempt force-normalized line endings with my own `.gitattributes`, which would have changed a shared file. Replaced it with the Prettier setting.
 
-**Files changed:** all; `.gitattributes`, `COMMIT_HISTORY.md`
+**Files changed:** all frontend files; `.gitignore`, `src/web/.prettierrc.json`, `COMMIT_HISTORY.md`
 **Kept?** Yes
 
 ---
