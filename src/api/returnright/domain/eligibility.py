@@ -1,8 +1,9 @@
 """Eligibility engine: decides per item whether it can be returned (30-day window, 10 days for
 electronics, never innerwear or perishables) and explains why in plain English.
 
-Implemented so far: BR 1.2, the standard 30-day return window. The category rules (electronics,
-innerwear, perishables) plug in here as their stories land.
+Implemented so far: BR 1.2, the standard 30-day window and the 10-day electronics window. Each
+category's window comes from categories.return_window_days, so the rules live in data. Innerwear
+and perishables (never returnable) plug in here as their story lands.
 """
 
 from dataclasses import dataclass
@@ -10,6 +11,15 @@ from datetime import date, timedelta
 
 STANDARD_RETURN_WINDOW_DAYS = 30
 """BR 1.2: an item can be returned up to and including day 30 after delivery."""
+
+ELECTRONICS_RETURN_WINDOW_DAYS = 10
+"""BR 1.2: electronics can be returned up to and including day 10 after delivery. Stored as
+categories.return_window_days for the Electronics row; this constant documents and tests it."""
+
+
+def window_days_for(category_window_days: int | None) -> int:
+    """The category's own window, or the standard 30 days when the category sets none."""
+    return category_window_days or STANDARD_RETURN_WINDOW_DAYS
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,11 +34,13 @@ def check_return_window(
     delivered_on: date | None,
     today: date,
     window_days: int = STANDARD_RETURN_WINDOW_DAYS,
+    category: str | None = None,
 ) -> EligibilityDecision:
     """Apply the return window to one item.
 
     Day 0 is the delivery date. The last allowed day is delivered_on + window_days, so with the
-    standard window day 30 is returnable and day 31 is not.
+    standard window day 30 is returnable and day 31 is not; for electronics, day 10 versus day 11.
+    When the window differs from the standard one, the reason names the category's rule.
     """
     if window_days <= 0:
         raise ValueError("window_days must be positive")
@@ -43,24 +55,30 @@ def check_return_window(
 
     days = (today - delivered_on).days
     window_ends_on = delivered_on + timedelta(days=window_days)
+    ends, ago = _format(window_ends_on), _days_ago(days)
+    category_rule = category is not None and window_days != STANDARD_RETURN_WINDOW_DAYS
 
     if days <= window_days:
+        rule = (
+            f"{category} items have a {window_days}-day return window"
+            if category_rule
+            else f"the return window is {window_days} days"
+        )
         return EligibilityDecision(
             eligible=True,
-            reason=(
-                f"You can return this item until {_format(window_ends_on)}. It was delivered "
-                f"{_days_ago(days)} and the return window is {window_days} days."
-            ),
+            reason=f"You can return this item until {ends}. It was delivered {ago} and {rule}.",
             days_since_delivery=days,
             window_ends_on=window_ends_on,
         )
 
+    ended = (
+        f"{category} items have a {window_days}-day return window, which ended on {ends}."
+        if category_rule
+        else f"The {window_days}-day return window ended on {ends}."
+    )
     return EligibilityDecision(
         eligible=False,
-        reason=(
-            f"The {window_days}-day return window ended on {_format(window_ends_on)}. "
-            f"This item was delivered {_days_ago(days)}."
-        ),
+        reason=f"{ended} This item was delivered {ago}.",
         days_since_delivery=days,
         window_ends_on=window_ends_on,
     )
