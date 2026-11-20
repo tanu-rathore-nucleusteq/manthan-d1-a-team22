@@ -6,22 +6,24 @@ The backend is built in two phases so each one ends with working, tested code. T
 
 Goal: a customer return goes from order lookup to a paid refund and a ledger row against the real database, for all four personas except the manager's read screens.
 
-- [ ] Architecture docs: ADR-001 on idempotency and per-return approval (`docs/adr/`), context and container diagrams, state machine and ledger design (`docs/lld.md`)
-- [ ] ORM models for every table in `db/schema_v2.sql`
-- [ ] Domain rules: category eligibility (electronics 10 days, innerwear and perishables never), state machine, refund policy (grades, 50%, threshold on the return total), frequent-returner flag
-- [ ] Staff login: bcrypt passwords, JWT with a role claim, `GET /auth/me`, role checks on staff routes
-- [ ] Seed script: 40 products in 6 categories, 500 customers, 2,000 orders, staff users, the demo orders from `docs/implementation-plan.md` section 7
-- [ ] Mock gateway: `POST /payments` with idempotency keys, fault switches (latency, error rate, outage) from the environment and `POST /admin/faults`, Postgres or in-memory store
-- [ ] Returns: create (eligibility re-check, 422 with reasons, 409 on a double submit, flag check), photo upload per item (type and size checks), detail, timeline, QR label, mark shipped, customer email check
-- [ ] Warehouse: queue, scan, receive (scanning twice answers "already received"), inspection per item with refund amounts and optimistic locking
-- [ ] Refunds: one refund per item, gateway key `refund-<return_item_id>`, retries with the same key, `failed` → retry → `paid`, store credit to the ledger only, ledger row per paid refund, return closed when every refund is paid
-- [ ] Finance: approvals queue, one decision per return, refunds list and detail, retry endpoint, ledger
-- [ ] Tests: unit tests for every rule; integration tests through the API on the real database for the happy path, grade C, two 6,000 items, double submit, failed payment retry, double pay, store credit, scanning twice, the 4th return and a wrong email
-- [ ] API docs regenerated; the frontend guide marks the phase 1 endpoints live
+- [x] Architecture docs: ADR-001 on idempotency and per-return approval (`docs/adr/`), context and container diagrams, state machine and ledger design (`docs/lld.md`)
+- [x] ORM models for every table in `db/schema_v2.sql`
+- [x] Domain rules: category eligibility (electronics 10 days, innerwear and perishables never), state machine, refund policy (grades, 50%, threshold on the return total), frequent-returner flag
+- [x] Staff login: bcrypt passwords, JWT with a role claim, `GET /auth/me`, role checks on staff routes
+- [x] Seed script: 40 products in 6 categories, 500 customers, 2,000 orders, staff users, the demo orders from `docs/implementation-plan.md` section 7
+- [x] Mock gateway: `POST /payments` with idempotency keys, fault switches (latency, error rate, outage) from the environment and `POST /admin/faults`, Postgres or in-memory store
+- [x] Returns: create (eligibility re-check, 422 with reasons, 409 on a double submit, flag check), photo upload per item (type and size checks), detail, timeline, QR label, mark shipped, customer email check
+- [x] Warehouse: queue, scan, receive (scanning twice answers "already received"), inspection per item with refund amounts and optimistic locking
+- [x] Refunds: one refund per item, gateway key `refund-<return_item_id>`, retries with the same key, `failed` → retry → `paid`, store credit to the ledger only, ledger row per paid refund, return closed when every refund is paid
+- [x] Finance: approvals queue, one decision per return, refunds list and detail, retry endpoint, ledger
+- [x] Tests: unit tests for every rule; integration tests through the API on the real database for the happy path, grade C, two 6,000 items, double submit, failed payment retry, double pay, store credit, scanning twice, the 4th return and a wrong email
+- [x] API docs regenerated; the frontend guide marks the phase 1 endpoints live
+
+Verified on 2026-11-20: 124 tests pass (unit, gateway and integration on the real database, each integration test rolled back), Ruff and Black are clean, and a live run of the API and the mock gateway over HTTP passed 21 demo checks, including a gateway outage, a retry that paid once, and the ledger reconciliation view staying empty.
 
 ## Phase 2: operate, observe and ship (branch `feature/backend-phase-2`)
 
-Goal: the manager's screens, the SRE drill and a one-command start on a fresh clone.
+Goal: the manager's screens, the SRE drill and a one-command start on a fresh clone. Start the branch from `feature/backend-phase-1` (or from `main` once phase 1 is merged).
 
 - [ ] Dashboard endpoints from the SQL views: return rate by category, top reasons, average cycle time, flagged customers
 - [ ] Audit endpoints: list with filters, history of one return

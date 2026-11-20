@@ -26,11 +26,11 @@ The token lasts `expires_in` seconds. On a 401, send the user to the login page.
 
 | Status | Meaning | Body |
 | --- | --- | --- |
-| 401 | Not signed in or token expired | `{ "detail": "Sign in first" }` |
+| 401 | Not signed in or token expired; or a wrong username or password at login | `{ "detail": "Sign in first" }`; at login `{ "code": "invalid_credentials", "message", "request_id" }` |
 | 403 | Signed in with the wrong role | `{ "detail": "Not allowed" }` |
 | 404 | Order or return not found for this email | `{ "code", "message", "request_id" }` |
 | 409 | Invalid status change, already done, or the item is already in an open return | `{ "code", "message", "request_id" }` |
-| 413 | Photo larger than the limit (5 MB by default) | `{ "detail": "..." }` |
+| 413 | Photo larger than the limit (5 MB by default) | `{ "code": "photo_too_large", "message", "request_id" }` |
 | 422 | A field is missing or invalid, or an item can't be returned | Validation: `{ "detail": [{ "loc", "msg" }] }`. Business rule: `{ "code", "message", "request_id" }` |
 | 501 | Endpoint not built yet | `{ "detail": "... is planned but not implemented yet" }` |
 
@@ -56,25 +56,25 @@ The API sends the lowercase value; show the label.
 | --- | --- | --- | --- |
 | 1 | `GET /health` | Status badge | Live |
 | 2 | `GET /health/ready` | Status badge | Live |
-| 3 | `POST /auth/login` | Staff login | Stub until backend phase 1 |
-| 4 | `GET /auth/me` | App shell (who is signed in) | Stub until backend phase 1 |
-| 5 | `POST /orders/lookup` | Wizard step 1 | Live (30-day window; category rules in phase 1) |
-| 6 | `POST /returns` | Wizard submit | Stub until backend phase 1 |
-| 7 | `POST /returns/{code}/photo` | Wizard, after submit | Stub until backend phase 1 |
-| 8 | `GET /returns/{code}` | Track my return | Stub until backend phase 1 |
-| 9 | `GET /returns/{code}/timeline` | Track my return | Stub until backend phase 1 |
-| 10 | `GET /returns/{code}/label` | Label page | Stub until backend phase 1 |
-| 11 | `POST /returns/{code}/ship` | Label page / track page | Stub until backend phase 1 |
-| 12 | `GET /warehouse/returns` | Warehouse queue | Stub until backend phase 1 |
-| 13 | `GET /warehouse/returns/{code}` | Warehouse scan | Stub until backend phase 1 |
-| 14 | `POST /warehouse/returns/{code}/receive` | Warehouse scan | Stub until backend phase 1 |
-| 15 | `POST /warehouse/returns/{code}/inspection` | Warehouse inspection | Stub until backend phase 1 |
-| 16 | `GET /finance/approvals` | Finance queue | Stub until backend phase 1 |
-| 17 | `POST /finance/approvals/{code}/decision` | Finance queue | Stub until backend phase 1 |
-| 18 | `GET /finance/refunds` | Finance refunds (filter `failed` for retries) | Stub until backend phase 1 |
-| 19 | `GET /finance/refunds/{refund_id}` | Refund details | Stub until backend phase 1 |
-| 20 | `POST /finance/refunds/{refund_id}/pay` | Retry a failed refund | Stub until backend phase 1 |
-| 21 | `GET /finance/ledger` | Finance ledger | Stub until backend phase 1 |
+| 3 | `POST /auth/login` | Staff login | Live |
+| 4 | `GET /auth/me` | App shell (who is signed in) | Live |
+| 5 | `POST /orders/lookup` | Wizard step 1 | Live |
+| 6 | `POST /returns` | Wizard submit | Live |
+| 7 | `POST /returns/{code}/photo` | Wizard, after submit | Live |
+| 8 | `GET /returns/{code}` | Track my return | Live |
+| 9 | `GET /returns/{code}/timeline` | Track my return | Live |
+| 10 | `GET /returns/{code}/label` | Label page | Live |
+| 11 | `POST /returns/{code}/ship` | Label page / track page | Live |
+| 12 | `GET /warehouse/returns` | Warehouse queue | Live |
+| 13 | `GET /warehouse/returns/{code}` | Warehouse scan | Live |
+| 14 | `POST /warehouse/returns/{code}/receive` | Warehouse scan | Live |
+| 15 | `POST /warehouse/returns/{code}/inspection` | Warehouse inspection | Live |
+| 16 | `GET /finance/approvals` | Finance queue | Live |
+| 17 | `POST /finance/approvals/{code}/decision` | Finance queue | Live |
+| 18 | `GET /finance/refunds` | Finance refunds (filter `failed` for retries) | Live |
+| 19 | `GET /finance/refunds/{refund_id}` | Refund details | Live |
+| 20 | `POST /finance/refunds/{refund_id}/pay` | Retry a failed refund | Live |
+| 21 | `GET /finance/ledger` | Finance ledger | Live |
 | 22 | `GET /dashboard` | Manager dashboard (all four views in one call) | Stub until backend phase 2 |
 | 23 | `GET /dashboard/return-rates` | Dashboard chart | Stub until backend phase 2 |
 | 24 | `GET /dashboard/top-reasons` | Dashboard chart | Stub until backend phase 2 |
@@ -83,6 +83,16 @@ The API sends the lowercase value; show the label.
 | 27 | `GET /audit/returns/{code}` | Audit for one return | Stub until backend phase 2 |
 
 While a call is a stub it answers 501 after validating input. Build the screen against the examples in [api.md](api.md) and switch to the live call when its status changes here.
+
+## Demo data
+
+After `cd src/api; python -m scripts.seed`, these work against the live API:
+
+- Staff: `warehouse1`, `finance1`, `manager1` with the `DEMO_PASSWORD` (`change-me-demo` by default).
+- Customer `asha.verma@example.com`: `ORD-DEMO-01` (happy path) to `ORD-DEMO-10` (mixed basket). `ORD-DEMO-02` is refused (electronics, day 11), `ORD-DEMO-04` is innerwear, `ORD-DEMO-06` is day 31, `ORD-DEMO-08` and `ORD-DEMO-09` need finance approval.
+- Customer `rohan.mehta@example.com`: `ORD-DEMO-11`; returning it flags him as a frequent returner.
+
+The full list and what each order shows is in [implementation-plan.md](implementation-plan.md) section 7. Reseed to reset everything.
 
 ## Customer screens
 
