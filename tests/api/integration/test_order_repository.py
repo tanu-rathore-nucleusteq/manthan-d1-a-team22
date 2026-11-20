@@ -14,7 +14,10 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from returnright.db.session import get_engine, get_session_factory
-from returnright.domain.eligibility import ELECTRONICS_RETURN_WINDOW_DAYS
+from returnright.domain.eligibility import (
+    ELECTRONICS_RETURN_WINDOW_DAYS,
+    NON_RETURNABLE_CATEGORIES,
+)
 from returnright.models import Category, Customer, Order, OrderItem, Product
 from returnright.repositories.order_repository import OrderRepository
 from returnright.services.order_service import OrderService
@@ -126,3 +129,16 @@ def test_electronics_window_end_to_end(session, days_ago, phone_eligible):
 
     decided = {item.category: item.eligible for item in result.items}
     assert decided == {"Electronics": phone_eligible, "Apparel": True}
+
+
+def test_non_returnable_categories_in_the_database_match_the_rule(session):
+    blocked = session.scalars(select(Category.name).where(Category.is_returnable.is_(False))).all()
+
+    assert frozenset(blocked) == NON_RETURNABLE_CATEGORIES
+
+
+def test_innerwear_and_perishables_refused_end_to_end(session):
+    result = lookup(session, save_order(session, 1, "Innerwear", "Perishables", "Apparel"))
+
+    decided = {item.category: item.eligible for item in result.items}
+    assert decided == {"Innerwear": False, "Perishables": False, "Apparel": True}

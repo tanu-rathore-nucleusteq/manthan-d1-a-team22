@@ -1,9 +1,10 @@
 """Eligibility engine: decides per item whether it can be returned (30-day window, 10 days for
 electronics, never innerwear or perishables) and explains why in plain English.
 
-Implemented so far: BR 1.2, the standard 30-day window and the 10-day electronics window. Each
-category's window comes from categories.return_window_days, so the rules live in data. Innerwear
-and perishables (never returnable) plug in here as their story lands.
+Implemented: BR 1.2 in full. decide_eligibility() is the entry point and applies, in order:
+1. not returnable: categories.is_returnable is FALSE (Innerwear, Perishables), whatever the date;
+2. return window: categories.return_window_days (10 for Electronics, otherwise the standard 30).
+The rules live in data (the categories table); the constants below document and test them.
 """
 
 from dataclasses import dataclass
@@ -17,6 +18,11 @@ ELECTRONICS_RETURN_WINDOW_DAYS = 10
 categories.return_window_days for the Electronics row; this constant documents and tests it."""
 
 
+NON_RETURNABLE_CATEGORIES = frozenset({"Innerwear", "Perishables"})
+"""BR 1.2: these categories are never returnable. Stored as categories.is_returnable = FALSE;
+this constant documents and tests it."""
+
+
 def window_days_for(category_window_days: int | None) -> int:
     """The category's own window, or the standard 30 days when the category sets none."""
     return category_window_days or STANDARD_RETURN_WINDOW_DAYS
@@ -28,6 +34,29 @@ class EligibilityDecision:
     reason: str
     days_since_delivery: int | None
     window_ends_on: date | None
+
+
+def decide_eligibility(
+    delivered_on: date | None,
+    today: date,
+    *,
+    category: str,
+    is_returnable: bool,
+    window_days: int | None,
+) -> EligibilityDecision:
+    """Decide one item: a non-returnable category is refused first, then the return window
+    applies (the category's window, or the standard 30 days when it sets none).
+    """
+    if not is_returnable:
+        return EligibilityDecision(
+            eligible=False,
+            reason=f"{category} items can't be returned under our returns policy.",
+            days_since_delivery=None,
+            window_ends_on=None,
+        )
+    return check_return_window(
+        delivered_on, today, window_days=window_days_for(window_days), category=category
+    )
 
 
 def check_return_window(

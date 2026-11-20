@@ -22,7 +22,7 @@ EMAIL = "asha@example.com"
 
 def make_order(order_number: str, delivered_days_ago: int | None) -> SimpleNamespace:
     delivered_at = None if delivered_days_ago is None else NOW - timedelta(days=delivered_days_ago)
-    apparel = SimpleNamespace(name="Apparel", return_window_days=30)
+    apparel = SimpleNamespace(name="Apparel", return_window_days=30, is_returnable=True)
     return SimpleNamespace(
         order_number=order_number,
         delivered_at=delivered_at,
@@ -55,7 +55,9 @@ def make_mixed_order(order_number: str, delivered_days_ago: int) -> SimpleNamesp
                 unit_price=Decimal("24999.00"),
                 product=SimpleNamespace(
                     name="Smartphone",
-                    category=SimpleNamespace(name="Electronics", return_window_days=10),
+                    category=SimpleNamespace(
+                        name="Electronics", return_window_days=10, is_returnable=True
+                    ),
                 ),
             ),
             SimpleNamespace(
@@ -64,9 +66,38 @@ def make_mixed_order(order_number: str, delivered_days_ago: int) -> SimpleNamesp
                 unit_price=Decimal("1499.00"),
                 product=SimpleNamespace(
                     name="Cotton shirt",
-                    category=SimpleNamespace(name="Apparel", return_window_days=30),
+                    category=SimpleNamespace(
+                        name="Apparel", return_window_days=30, is_returnable=True
+                    ),
                 ),
             ),
+        ],
+    )
+
+
+def make_restricted_order(order_number: str, delivered_days_ago: int) -> SimpleNamespace:
+    """Innerwear and Perishables (never returnable) next to a shirt (Apparel, 30 days)."""
+
+    def item(item_id: int, name: str, category: str, returnable: bool, window: int | None):
+        return SimpleNamespace(
+            order_item_id=item_id,
+            quantity=1,
+            unit_price=Decimal("499.00"),
+            product=SimpleNamespace(
+                name=name,
+                category=SimpleNamespace(
+                    name=category, return_window_days=window, is_returnable=returnable
+                ),
+            ),
+        )
+
+    return SimpleNamespace(
+        order_number=order_number,
+        delivered_at=NOW - timedelta(days=delivered_days_ago),
+        items=[
+            item(31, "Cotton briefs", "Innerwear", False, None),
+            item(32, "Organic honey", "Perishables", False, None),
+            item(33, "Cotton shirt", "Apparel", True, 30),
         ],
     )
 
@@ -87,6 +118,7 @@ def client():
         make_order("ORD-NOTDLV", None),
         make_mixed_order("ORD-MIX10", 10),
         make_mixed_order("ORD-MIX11", 11),
+        make_restricted_order("ORD-RESTRICT", 1),
     )
     app.dependency_overrides[get_order_service] = lambda: OrderService(orders, FixedClock(NOW))
     yield TestClient(app)
@@ -190,3 +222,17 @@ def test_electronics_on_day_11_are_refused_but_the_shirt_is_not(client):
         "This item was delivered 11 days ago."
     )
     assert shirt["window_ends_on"] == "2026-12-09"  # delivered 9 Nov + 30 days
+
+
+def test_innerwear_and_perishables_are_refused_even_one_day_after_delivery(client):
+    body = lookup(client, "ORD-RESTRICT").json()
+
+    assert eligibility_by_product(body) == {
+        "Cotton briefs": False,
+        "Organic honey": False,
+        "Cotton shirt": True,
+    }
+    briefs, honey, _shirt = body["items"]
+    assert briefs["reason"] == "Innerwear items can't be returned under our returns policy."
+    assert honey["reason"] == "Perishables items can't be returned under our returns policy."
+    assert briefs["window_ends_on"] is None
