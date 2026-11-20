@@ -7,6 +7,8 @@ BR 1.2 rules implemented here:
 - Finance check: applies to the return's refund total (the sum of its item refunds), strictly
   above the threshold, so exactly 10,000.00 INR is paid without review. The service passes
   Settings.finance_approval_threshold_inr; the default here is the same value.
+- Pay only once: every gateway call for a return item uses the key refund-<return_item_id>, so a
+  double click or a retry sends the same key and the gateway replays its first answer.
 """
 
 from collections.abc import Iterable
@@ -26,6 +28,15 @@ REFUND_PERCENT_BY_GRADE = MappingProxyType({Grade.A: 100, Grade.B: 100, Grade.C:
 """Refund percent for an accepted item, by condition grade."""
 
 _PAISE = Decimal("0.01")
+
+
+def refund_idempotency_key(return_item_id: int) -> str:
+    """BR 1.2: the gateway idempotency key for a return item's refund. It depends only on the
+    item, never on the attempt, so every retry for the same item sends the same key.
+    """
+    if return_item_id <= 0:
+        raise ValueError("return_item_id must be positive")
+    return f"refund-{return_item_id}"
 
 
 def refund_percent(grade: Grade, decision: ItemDecision) -> int:

@@ -13,6 +13,31 @@ class DomainError(Exception):
         self.message = message
 
 
+class PaymentGatewayError(DomainError):
+    """The payment gateway did not pay. The refund stays unpaid and can be retried with the same
+    idempotency key."""
+
+    code = "payment_gateway_error"
+
+
+class GatewayUnavailableError(PaymentGatewayError):
+    code = "gateway_unavailable"
+
+    def __init__(self, attempts: int) -> None:
+        super().__init__(
+            f"The payment gateway did not answer after {attempts} attempts. The refund was not "
+            "paid twice; retry it later."
+        )
+        self.attempts = attempts
+
+
+class IdempotencyConflictError(PaymentGatewayError):
+    code = "idempotency_conflict"
+
+    def __init__(self) -> None:
+        super().__init__("This refund's idempotency key was already used for a different payment.")
+
+
 class OrderNotFoundError(DomainError):
     code = "order_not_found"
 
