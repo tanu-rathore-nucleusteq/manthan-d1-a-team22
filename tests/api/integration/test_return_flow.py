@@ -941,3 +941,19 @@ def test_photo_larger_than_the_limit_is_refused_with_413(client, world):
 
     assert response.status_code == 413
     assert response.json()["code"] == "photo_too_large"
+
+
+def test_finance_can_open_a_return_before_deciding_but_cannot_receive_it(client, world):
+    customer = world.customer()
+    order = world.order(customer, 5, ("Apparel", "1500.00", 1))
+    code = create_return(client, order, customer.email, world.order_item_ids(order)).json()[
+        "return_code"
+    ]
+    finance = staff_headers(client, world, Role.FINANCE_REVIEWER)
+
+    detail = client.get(f"/api/v1/warehouse/returns/{code}", headers=finance)
+    receive = client.post(f"/api/v1/warehouse/returns/{code}/receive", headers=finance)
+
+    assert detail.status_code == 200
+    assert detail.json()["customer_name"] == "Test Customer"
+    assert receive.status_code == 403
