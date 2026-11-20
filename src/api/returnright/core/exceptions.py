@@ -21,12 +21,17 @@ class OrderNotFoundError(DomainError):
         super().__init__("We couldn't find an order with that order number and email.")
 
 
+STAFF_NOT_FOUND = "We couldn't find a return with that code. Check the label and try again."
+
+
 class ReturnNotFoundError(DomainError):
     code = "return_not_found"
 
-    def __init__(self) -> None:
-        # Same message whether the code or the email is wrong.
-        super().__init__("We couldn't find a return with that code and email.")
+    def __init__(
+        self, message: str = "We couldn't find a return with that code and email."
+    ) -> None:
+        # For customers, the same message whether the code or the email is wrong.
+        super().__init__(message)
 
 
 class RefundNotFoundError(DomainError):
@@ -41,6 +46,13 @@ class InvalidCredentialsError(DomainError):
 
     def __init__(self) -> None:
         super().__init__("Wrong username or password.")
+
+
+class InvalidDateRangeError(DomainError):
+    code = "invalid_date_range"
+
+    def __init__(self) -> None:
+        super().__init__("The start date must be on or before the end date.")
 
 
 class InvalidReturnRequestError(DomainError):

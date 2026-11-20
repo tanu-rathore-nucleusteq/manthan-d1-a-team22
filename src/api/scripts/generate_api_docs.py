@@ -46,6 +46,12 @@ IMPLEMENTED = {
     ("GET", "/api/v1/finance/refunds/{refund_id}"),
     ("POST", "/api/v1/finance/refunds/{refund_id}/pay"),
     ("GET", "/api/v1/finance/ledger"),
+    ("GET", "/api/v1/dashboard"),
+    ("GET", "/api/v1/dashboard/return-rates"),
+    ("GET", "/api/v1/dashboard/top-reasons"),
+    ("GET", "/api/v1/dashboard/flagged-customers"),
+    ("GET", "/api/v1/audit"),
+    ("GET", "/api/v1/audit/returns/{return_code}"),
 }
 
 TAG_ORDER = [

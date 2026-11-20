@@ -1,18 +1,46 @@
-"""Writes audit_log rows in the caller's transaction: every return status change, finance
-decisions, refund payments and customer flags.
+"""Writes audit_log rows in the caller's transaction (every return status change, finance
+decisions, refund payments and customer flags) and reads them back for the operations manager.
 """
 
 from typing import Any
 
+from sqlalchemy.orm import Session
+
+from returnright.core.exceptions import STAFF_NOT_FOUND, ReturnNotFoundError
 from returnright.domain.enums import ReturnStatus
 from returnright.domain.state_machine import FINAL_STATUSES, ensure_can_move
 from returnright.dtos.internal.audit import Actor
+from returnright.dtos.responses.audit import AuditLogResponse
+from returnright.dtos.responses.common import PageResponse
+from returnright.mappers.audit_mapper import to_audit_response
 from returnright.models.audit_log import STATUS_CHANGE, AuditLog
 from returnright.models.return_request import ReturnRequest
 from returnright.repositories.audit_repository import AuditRepository
+from returnright.repositories.return_repository import ReturnRepository
 from returnright.utils.clock import Clock
 
 RETURN = "RETURN"
+
+
+class AuditLogService:
+    def __init__(self, session: Session) -> None:
+        self._audits = AuditRepository(session)
+        self._returns = ReturnRepository(session)
+
+    def page(
+        self, entity: str | None, entity_id: int | None, page: int, size: int
+    ) -> PageResponse[AuditLogResponse]:
+        entity_type = entity.upper() if entity else None
+        rows, total = self._audits.page(entity_type, entity_id, (page - 1) * size, size)
+        return PageResponse[AuditLogResponse](
+            items=[to_audit_response(row) for row in rows], total=total, page=page, size=size
+        )
+
+    def for_return(self, code: str) -> list[AuditLogResponse]:
+        return_request = self._returns.get_by_code(code)
+        if return_request is None:
+            raise ReturnNotFoundError(STAFF_NOT_FOUND)
+        return [to_audit_response(row) for row in self._audits.for_return(return_request.return_id)]
 
 
 class AuditTrail:

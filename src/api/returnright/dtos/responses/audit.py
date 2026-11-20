@@ -1,4 +1,4 @@
-"""Audit log entries: one per state change."""
+"""Audit log entries: one per state change, refund payment, finance decision or customer flag."""
 
 from datetime import datetime
 
@@ -10,8 +10,9 @@ class AuditLogResponse(ResponseDTO):
     audit_id: int
     entity: str
     entity_id: int
+    action: str
     from_status: str | None
-    to_status: str
+    to_status: str | None
     actor: str
     actor_role: Role | None
     reason: str | None = None
