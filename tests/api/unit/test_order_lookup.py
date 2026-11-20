@@ -182,10 +182,11 @@ def test_unknown_order_or_wrong_email_is_404_with_the_same_message(client, order
     response = lookup(client, order_number, email)
 
     assert response.status_code == 404
-    assert response.json() == {
+    body = response.json()
+    assert body == {
         "code": "order_not_found",
         "message": "We couldn't find an order with that order number and email.",
-        "request_id": None,
+        "request_id": response.headers["X-Request-ID"],
     }
 
 

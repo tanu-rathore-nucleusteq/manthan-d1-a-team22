@@ -99,7 +99,19 @@ export function createHttpBackend(
         }),
       ),
 
-    listLedger: () => call(api.GET('/api/v1/finance/ledger', { params: { query: ALL } })),
+    async listLedger() {
+      // The ledger screen shows totals, so it needs every entry, not only the first page.
+      const first = await call(api.GET('/api/v1/finance/ledger', { params: { query: ALL } }))
+      const items = [...first.items]
+      for (let page = 2; items.length < first.total; page++) {
+        const next = await call(
+          api.GET('/api/v1/finance/ledger', { params: { query: { ...ALL, page } } }),
+        )
+        if (next.items.length === 0) break
+        items.push(...next.items)
+      }
+      return { ...first, items, size: items.length }
+    },
 
     getDashboard: dashboard,
   }

@@ -46,10 +46,15 @@ export function ApprovalDetailPage() {
     decide.mutate(
       { approve, comment: comment.trim() || null },
       {
-        onSuccess: () => {
+        onSuccess: (result) => {
+          const paid = result.refunds.every((refund) => refund.status === 'paid')
           toast({
-            tone: approve ? 'success' : 'info',
-            title: approve ? `Refund for ${code} approved and paid` : `Refund for ${code} rejected`,
+            tone: !approve ? 'info' : paid ? 'success' : 'danger',
+            title: !approve
+              ? `Refund for ${code} rejected`
+              : paid
+                ? `Refund for ${code} approved and paid`
+                : `Refund for ${code} approved; the payment didn't go through and needs a retry`,
           })
           navigate('/finance')
         },

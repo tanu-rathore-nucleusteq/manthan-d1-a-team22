@@ -35,6 +35,7 @@ def to_item_response(item: ReturnItem) -> ReturnItemResponse:
         order_item_id=item.order_item_id,
         product_name=item.order_item.product.name,
         quantity=item.quantity,
+        unit_price=item.order_item.unit_price,
         reason=ReturnReason[item.reason.code],
         reason_details=item.reason_note,
         photo_urls=[photo_url(photo.file_path) for photo in item.photos],
@@ -62,8 +63,9 @@ def return_refund_total(return_request: ReturnRequest) -> Decimal | None:
 
 
 def to_return_detail(
-    return_request: ReturnRequest, history: Sequence[AuditLog]
+    return_request: ReturnRequest, history: Sequence[AuditLog], *, for_staff: bool = False
 ) -> ReturnDetailResponse:
+    customer = return_request.customer
     return ReturnDetailResponse(
         return_code=return_request.return_code,
         status=return_request.status,
@@ -72,6 +74,9 @@ def to_return_detail(
         timeline=to_status_events(history),
         refund_total=return_refund_total(return_request),
         created_at=return_request.requested_at,
+        order_number=return_request.order.order_number,
+        customer_name=customer.full_name if for_staff else None,
+        customer_flagged=customer.is_flagged if for_staff else None,
     )
 
 
@@ -80,6 +85,7 @@ def to_summary(return_request: ReturnRequest, updated_at: datetime | None) -> Re
         return_code=return_request.return_code,
         status=return_request.status,
         order_number=return_request.order.order_number,
+        customer_name=return_request.customer.full_name,
         item_count=len(return_request.items),
         refund_total=return_refund_total(return_request),
         customer_flagged=return_request.customer.is_flagged,

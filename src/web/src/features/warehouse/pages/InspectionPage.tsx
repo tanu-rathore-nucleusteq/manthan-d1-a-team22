@@ -287,16 +287,18 @@ function ResultCard({ result }: { result: InspectionResultResponse }) {
         tone={
           result.status === 'rejected'
             ? 'danger'
-            : result.needs_finance_approval
-              ? 'warning'
-              : 'success'
+            : result.status === 'refunded'
+              ? 'success'
+              : 'warning'
         }
         title={
           result.status === 'rejected'
             ? 'All items rejected: no refund'
             : result.needs_finance_approval
               ? `Refund of ${formatInr(result.refund_total)} sent for finance approval`
-              : `Refund of ${formatInr(result.refund_total)} paid`
+              : result.status === 'refunded'
+                ? `Refund of ${formatInr(result.refund_total)} paid`
+                : `Refund of ${formatInr(result.refund_total)} recorded; the payment didn't go through and finance will retry it`
         }
       />
       <GradedItemsTable items={result.items} total={result.refund_total} />

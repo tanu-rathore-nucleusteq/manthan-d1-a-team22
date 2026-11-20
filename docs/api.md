@@ -1,6 +1,6 @@
 # ReturnRight API
 
-The ReturnRight API has 27 endpoints under `/api/v1`, for customers, warehouse agents, finance reviewers and operations managers. 21 are implemented; the rest are typed stubs that validate input and return `501` until their story lands.
+The ReturnRight API has 27 endpoints under `/api/v1`, for customers, warehouse agents, finance reviewers and operations managers. 27 are implemented; the rest are typed stubs that validate input and return `501` until their story lands.
 
 Generated from the FastAPI app on 2026-11-20 by `python src/api/scripts/generate_api_docs.py`. Do not edit by hand: change the code, then regenerate. The design behind it is in [api-plan.md](api-plan.md).
 
@@ -73,12 +73,12 @@ A `422` validation body looks like this:
 | 19 | GET | [`/api/v1/finance/refunds/{refund_id}`](#op-get-api-v1-finance-refunds-refund-id) | One refund | Finance reviewer | Done |
 | 20 | POST | [`/api/v1/finance/refunds/{refund_id}/pay`](#op-post-api-v1-finance-refunds-refund-id-pay) | Pay an approved refund, or retry a failed one, through the gateway (idempotent) | Finance reviewer | Done |
 | 21 | GET | [`/api/v1/finance/ledger`](#op-get-api-v1-finance-ledger) | Ledger of gateway refunds and store credit | Finance reviewer | Done |
-| 22 | GET | [`/api/v1/dashboard`](#op-get-api-v1-dashboard) | All dashboard metrics in one call | Operations manager | Stub |
-| 23 | GET | [`/api/v1/dashboard/return-rates`](#op-get-api-v1-dashboard-return-rates) | Return rate by category | Operations manager | Stub |
-| 24 | GET | [`/api/v1/dashboard/top-reasons`](#op-get-api-v1-dashboard-top-reasons) | Top return reasons | Operations manager | Stub |
-| 25 | GET | [`/api/v1/dashboard/flagged-customers`](#op-get-api-v1-dashboard-flagged-customers) | Customers with more than 3 returns in 30 days | Operations manager | Stub |
-| 26 | GET | [`/api/v1/audit`](#op-get-api-v1-audit) | Audit log, newest first | Operations manager | Stub |
-| 27 | GET | [`/api/v1/audit/returns/{return_code}`](#op-get-api-v1-audit-returns-return-code) | Every state change of one return, oldest first | Operations manager | Stub |
+| 22 | GET | [`/api/v1/dashboard`](#op-get-api-v1-dashboard) | All dashboard metrics in one call | Operations manager | Done |
+| 23 | GET | [`/api/v1/dashboard/return-rates`](#op-get-api-v1-dashboard-return-rates) | Return rate by category | Operations manager | Done |
+| 24 | GET | [`/api/v1/dashboard/top-reasons`](#op-get-api-v1-dashboard-top-reasons) | Top return reasons | Operations manager | Done |
+| 25 | GET | [`/api/v1/dashboard/flagged-customers`](#op-get-api-v1-dashboard-flagged-customers) | Customers with more than 3 returns in 30 days | Operations manager | Done |
+| 26 | GET | [`/api/v1/audit`](#op-get-api-v1-audit) | Audit log, newest first | Operations manager | Done |
+| 27 | GET | [`/api/v1/audit/returns/{return_code}`](#op-get-api-v1-audit-returns-return-code) | Everything recorded for one return, oldest first | Operations manager | Done |
 
 ## Health
 
@@ -273,6 +273,7 @@ Example response:
       "order_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
+      "unit_price": "1499.00",
       "reason": "damaged",
       "reason_details": "Seam torn on arrival",
       "photo_urls": [],
@@ -289,7 +290,10 @@ Example response:
     }
   ],
   "refund_total": "2998.00",
-  "created_at": "2026-11-20T10:30:00Z"
+  "created_at": "2026-11-20T10:30:00Z",
+  "order_number": "ORD-104233",
+  "customer_name": "string",
+  "customer_flagged": false
 }
 ```
 
@@ -356,6 +360,7 @@ Example response:
       "order_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
+      "unit_price": "1499.00",
       "reason": "damaged",
       "reason_details": "Seam torn on arrival",
       "photo_urls": [],
@@ -372,7 +377,10 @@ Example response:
     }
   ],
   "refund_total": "2998.00",
-  "created_at": "2026-11-20T10:30:00Z"
+  "created_at": "2026-11-20T10:30:00Z",
+  "order_number": "ORD-104233",
+  "customer_name": "string",
+  "customer_flagged": false
 }
 ```
 
@@ -474,6 +482,7 @@ Example response:
       "order_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
+      "unit_price": "1499.00",
       "reason": "damaged",
       "reason_details": "Seam torn on arrival",
       "photo_urls": [],
@@ -490,7 +499,10 @@ Example response:
     }
   ],
   "refund_total": "2998.00",
-  "created_at": "2026-11-20T10:30:00Z"
+  "created_at": "2026-11-20T10:30:00Z",
+  "order_number": "ORD-104233",
+  "customer_name": "string",
+  "customer_flagged": false
 }
 ```
 
@@ -525,6 +537,7 @@ Example response:
       "return_code": "RR-7K2P9QX4",
       "status": "requested",
       "order_number": "ORD-104233",
+      "customer_name": "string",
       "item_count": 1,
       "refund_total": "2998.00",
       "customer_flagged": false,
@@ -570,6 +583,7 @@ Example response:
       "order_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
+      "unit_price": "1499.00",
       "reason": "damaged",
       "reason_details": "Seam torn on arrival",
       "photo_urls": [],
@@ -586,7 +600,10 @@ Example response:
     }
   ],
   "refund_total": "2998.00",
-  "created_at": "2026-11-20T10:30:00Z"
+  "created_at": "2026-11-20T10:30:00Z",
+  "order_number": "ORD-104233",
+  "customer_name": "string",
+  "customer_flagged": false
 }
 ```
 
@@ -623,6 +640,7 @@ Example response:
       "order_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
+      "unit_price": "1499.00",
       "reason": "damaged",
       "reason_details": "Seam torn on arrival",
       "photo_urls": [],
@@ -639,7 +657,10 @@ Example response:
     }
   ],
   "refund_total": "2998.00",
-  "created_at": "2026-11-20T10:30:00Z"
+  "created_at": "2026-11-20T10:30:00Z",
+  "order_number": "ORD-104233",
+  "customer_name": "string",
+  "customer_flagged": false
 }
 ```
 
@@ -690,6 +711,7 @@ Example response:
       "order_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
+      "unit_price": "1499.00",
       "reason": "damaged",
       "reason_details": "Seam torn on arrival",
       "photo_urls": [],
@@ -961,7 +983,7 @@ Example response:
 
 All dashboard metrics in one call
 
-**Access:** Operations manager · **Status:** Stub: returns 501
+**Access:** Operations manager · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -974,7 +996,6 @@ All dashboard metrics in one call
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -1011,7 +1032,7 @@ Example response:
 
 Return rate by category
 
-**Access:** Operations manager · **Status:** Stub: returns 501
+**Access:** Operations manager · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -1024,7 +1045,6 @@ Return rate by category
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -1044,7 +1064,7 @@ Example response:
 
 Top return reasons
 
-**Access:** Operations manager · **Status:** Stub: returns 501
+**Access:** Operations manager · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -1058,7 +1078,6 @@ Top return reasons
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -1076,14 +1095,13 @@ Example response:
 
 Customers with more than 3 returns in 30 days
 
-**Access:** Operations manager · **Status:** Stub: returns 501
+**Access:** Operations manager · **Status:** Implemented
 
 | Status | Meaning | Body |
 | --- | --- | --- |
 | 200 | Success | list[[`FlaggedCustomerResponse`](#model-flaggedcustomerresponse)] |
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -1104,11 +1122,11 @@ Example response:
 
 Audit log, newest first
 
-**Access:** Operations manager · **Status:** Stub: returns 501
+**Access:** Operations manager · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
-| `entity` | query | string \| null | no | max length 50 |
+| `entity` | query | string \| null | no | return, refund or customer; max length 50 |
 | `entity_id` | query | integer \| null | no | > 0 |
 | `page` | query | integer | no | ≥ 1, default `1` |
 | `size` | query | integer | no | ≥ 1, ≤ 100, default `20` |
@@ -1119,7 +1137,6 @@ Audit log, newest first
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -1130,6 +1147,7 @@ Example response:
       "audit_id": 1,
       "entity": "return_request",
       "entity_id": 1,
+      "action": "string",
       "from_status": "in_transit",
       "to_status": "received",
       "actor": "warehouse1",
@@ -1147,9 +1165,9 @@ Example response:
 <a id="op-get-api-v1-audit-returns-return-code"></a>
 ### `GET /api/v1/audit/returns/{return_code}`
 
-Every state change of one return, oldest first
+Everything recorded for one return, oldest first
 
-**Access:** Operations manager · **Status:** Stub: returns 501
+**Access:** Operations manager · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -1161,7 +1179,6 @@ Every state change of one return, oldest first
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -1171,6 +1188,7 @@ Example response:
     "audit_id": 1,
     "entity": "return_request",
     "entity_id": 1,
+    "action": "string",
     "from_status": "in_transit",
     "to_status": "received",
     "actor": "warehouse1",
@@ -1214,8 +1232,9 @@ Unknown fields are rejected.
 | `audit_id` | integer | yes |  |
 | `entity` | string | yes |  |
 | `entity_id` | integer | yes |  |
+| `action` | string | yes |  |
 | `from_status` | string \| null | yes |  |
-| `to_status` | string | yes |  |
+| `to_status` | string \| null | yes |  |
 | `actor` | string | yes |  |
 | `actor_role` | [`Role`](#model-role) \| null | yes |  |
 | `reason` | string \| null | no |  |
@@ -1273,6 +1292,15 @@ Unknown fields are rejected.
 | `code` | string | yes |  |
 | `message` | string | yes |  |
 | `request_id` | string \| null | no |  |
+| `errors` | list[[`FieldError`](#model-fielderror)] \| null | no |  |
+
+<a id="model-fielderror"></a>
+### `FieldError`
+
+| Field | Type | Required | Rules |
+| --- | --- | --- | --- |
+| `field` | string | yes |  |
+| `message` | string | yes |  |
 
 <a id="model-flaggedcustomerresponse"></a>
 ### `FlaggedCustomerResponse`
@@ -1500,6 +1528,9 @@ Unknown fields are rejected.
 | `timeline` | list[[`StatusEventResponse`](#model-statuseventresponse)] | yes |  |
 | `refund_total` | decimal (string) \| null | no |  |
 | `created_at` | datetime | yes |  |
+| `order_number` | string | yes |  |
+| `customer_name` | string \| null | no |  |
+| `customer_flagged` | boolean \| null | no |  |
 
 <a id="model-returnitemrequest"></a>
 ### `ReturnItemRequest`
@@ -1522,6 +1553,7 @@ Unknown fields are rejected.
 | `order_item_id` | integer | yes |  |
 | `product_name` | string | yes |  |
 | `quantity` | integer | yes |  |
+| `unit_price` | decimal (string) | yes |  |
 | `reason` | [`ReturnReason`](#model-returnreason) | yes |  |
 | `reason_details` | string \| null | no |  |
 | `photo_urls` | list[string] | no | default `[]` |
@@ -1548,6 +1580,7 @@ One row in a staff work queue.
 | `return_code` | string | yes |  |
 | `status` | [`ReturnStatus`](#model-returnstatus) | yes |  |
 | `order_number` | string | yes |  |
+| `customer_name` | string | yes |  |
 | `item_count` | integer | yes |  |
 | `refund_total` | decimal (string) \| null | no |  |
 | `customer_flagged` | boolean | no | default `false` |

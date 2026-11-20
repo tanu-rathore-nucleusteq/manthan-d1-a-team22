@@ -1654,8 +1654,10 @@
                   "type": "null"
                 }
               ],
+              "description": "return, refund or customer",
               "title": "Entity"
-            }
+            },
+            "description": "return, refund or customer"
           },
           {
             "name": "entity_id",
@@ -1727,7 +1729,7 @@
         "tags": [
           "audit"
         ],
-        "summary": "Every state change of one return, oldest first",
+        "summary": "Everything recorded for one return, oldest first",
         "operationId": "get_return_audit_api_v1_audit_returns__return_code__get",
         "security": [
           {
@@ -1821,6 +1823,10 @@
             "type": "integer",
             "title": "Entity Id"
           },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
           "from_status": {
             "anyOf": [
               {
@@ -1833,7 +1839,14 @@
             "title": "From Status"
           },
           "to_status": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "To Status"
           },
           "actor": {
@@ -1872,6 +1885,7 @@
           "audit_id",
           "entity",
           "entity_id",
+          "action",
           "from_status",
           "to_status",
           "actor",
@@ -2059,6 +2073,20 @@
               }
             ],
             "title": "Request Id"
+          },
+          "errors": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FieldError"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errors"
           }
         },
         "type": "object",
@@ -2067,6 +2095,24 @@
           "message"
         ],
         "title": "ErrorResponse"
+      },
+      "FieldError": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "field",
+          "message"
+        ],
+        "title": "FieldError"
       },
       "FlaggedCustomerResponse": {
         "properties": {
@@ -2812,6 +2858,32 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "order_number": {
+            "type": "string",
+            "title": "Order Number"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "customer_flagged": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Flagged"
           }
         },
         "type": "object",
@@ -2821,7 +2893,8 @@
           "refund_method",
           "items",
           "timeline",
-          "created_at"
+          "created_at",
+          "order_number"
         ],
         "title": "ReturnDetailResponse"
       },
@@ -2880,6 +2953,10 @@
           "quantity": {
             "type": "integer",
             "title": "Quantity"
+          },
+          "unit_price": {
+            "type": "string",
+            "title": "Unit Price"
           },
           "reason": {
             "$ref": "#/components/schemas/ReturnReason"
@@ -2941,6 +3018,7 @@
           "order_item_id",
           "product_name",
           "quantity",
+          "unit_price",
           "reason"
         ],
         "title": "ReturnItemResponse"
@@ -3008,6 +3086,10 @@
             "type": "string",
             "title": "Order Number"
           },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
           "item_count": {
             "type": "integer",
             "title": "Item Count"
@@ -3044,6 +3126,7 @@
           "return_code",
           "status",
           "order_number",
+          "customer_name",
           "item_count",
           "created_at",
           "updated_at"

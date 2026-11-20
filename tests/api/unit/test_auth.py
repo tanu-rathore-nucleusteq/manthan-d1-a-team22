@@ -126,6 +126,7 @@ class FakeInspectionService:
                         "order_item_id": 2,
                         "product_name": "Laptop 14 inch",
                         "quantity": 1,
+                        "unit_price": "12000.00",
                         "reason": "damaged",
                         "photo_urls": ["/api/v1/uploads/returns/1.png"],
                         "grade": "A",
@@ -136,6 +137,7 @@ class FakeInspectionService:
                 "timeline": [],
                 "refund_total": "12000.00",
                 "created_at": datetime.now(UTC),
+                "order_number": "ORD-DEMO-08",
             }
         )
 

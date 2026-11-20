@@ -122,7 +122,7 @@ function Wizard({ orderNumber, deliveredOn, items, email }: WizardProps) {
           saveProof(created.return_code, email)
           navigate(`/returns/${created.return_code}/label`, {
             replace: true,
-            state: { created: true },
+            state: { created: true, photoUploaded: created.photoUploaded },
           })
         },
       },

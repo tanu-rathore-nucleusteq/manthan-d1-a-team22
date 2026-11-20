@@ -12,6 +12,7 @@ Every API call the web app needs, grouped by screen, with the headers, enum valu
 | Money | Decimal strings with two places, for example `"1499.00"`. Never do arithmetic on them as floats; display them as text |
 | Dates | ISO 8601 in UTC: `"2026-11-20T09:30:00Z"` for timestamps, `"2026-12-20"` for dates |
 | Lists | `?page=1&size=20` (size up to 100). The answer is `{ items, total, page, size }` |
+| Mock or real API | The app uses the in-browser mock unless `VITE_USE_MOCKS=false`; then every call goes through `src/api/httpBackend.ts` to the API |
 
 ## Who is calling
 
@@ -24,17 +25,19 @@ The token lasts `expires_in` seconds. On a 401, send the user to the login page.
 
 ## Errors
 
-| Status | Meaning | Body |
-| --- | --- | --- |
-| 401 | Not signed in or token expired; or a wrong username or password at login | `{ "detail": "Sign in first" }`; at login `{ "code": "invalid_credentials", "message", "request_id" }` |
-| 403 | Signed in with the wrong role | `{ "detail": "Not allowed" }` |
-| 404 | Order or return not found for this email | `{ "code", "message", "request_id" }` |
-| 409 | Invalid status change, already done, or the item is already in an open return | `{ "code", "message", "request_id" }` |
-| 413 | Photo larger than the limit (5 MB by default) | `{ "code": "photo_too_large", "message", "request_id" }` |
-| 422 | A field is missing or invalid, or an item can't be returned | Validation: `{ "detail": [{ "loc", "msg" }] }`. Business rule: `{ "code", "message", "request_id" }` |
-| 501 | Endpoint not built yet | `{ "detail": "... is planned but not implemented yet" }` |
+Every error has one shape: `{ "code", "message", "request_id" }`, plus `errors: [{ "field", "message" }]` when fields are invalid. Every response also carries the `X-Request-ID` header; show the id in error messages so support can find the request in the logs (`docs/runbook.md`).
 
-Show `message` when it is present; it is written for customers and staff. Otherwise show `detail` when it is a string, or highlight the fields named in `detail[].loc`. Never retry a write automatically (React Query mutations already use `retry: 0`).
+| Status | `code` examples | Meaning |
+| --- | --- | --- |
+| 401 | `not_authenticated`, `invalid_credentials` | Not signed in, token expired, or a wrong username or password at login |
+| 403 | `forbidden` | Signed in with the wrong role |
+| 404 | `order_not_found`, `return_not_found`, `not_found` | Order or return not found (for customers: not found for this email) |
+| 409 | `invalid_transition`, `already_received`, `duplicate_return`, `already_decided` | Invalid status change, already done, or the item is already in an open return |
+| 413 | `photo_too_large` | Photo larger than the limit (5 MB by default) |
+| 422 | `validation_error` (with `errors`), `item_not_eligible`, `invalid_date_range` | A field is missing or invalid, or a business rule refused the request |
+| 500 | `internal_error` | Our fault; the message never contains internal details |
+
+Show `message`; it is written for customers and staff. For `validation_error`, also highlight the fields named in `errors[].field`. Never retry a write automatically (React Query mutations already use `retry: 0`).
 
 ## Enum values and labels
 
@@ -75,14 +78,14 @@ The API sends the lowercase value; show the label.
 | 19 | `GET /finance/refunds/{refund_id}` | Refund details | Live |
 | 20 | `POST /finance/refunds/{refund_id}/pay` | Retry a failed refund | Live |
 | 21 | `GET /finance/ledger` | Finance ledger | Live |
-| 22 | `GET /dashboard` | Manager dashboard (all four views in one call) | Stub until backend phase 2 |
-| 23 | `GET /dashboard/return-rates` | Dashboard chart | Stub until backend phase 2 |
-| 24 | `GET /dashboard/top-reasons` | Dashboard chart | Stub until backend phase 2 |
-| 25 | `GET /dashboard/flagged-customers` | Dashboard table | Stub until backend phase 2 |
-| 26 | `GET /audit` | Audit log | Stub until backend phase 2 |
-| 27 | `GET /audit/returns/{code}` | Audit for one return | Stub until backend phase 2 |
+| 22 | `GET /dashboard` | Manager dashboard (all four views in one call) | Live |
+| 23 | `GET /dashboard/return-rates` | Dashboard chart | Live |
+| 24 | `GET /dashboard/top-reasons` | Dashboard chart | Live |
+| 25 | `GET /dashboard/flagged-customers` | Dashboard table | Live |
+| 26 | `GET /audit` | Audit log | Live |
+| 27 | `GET /audit/returns/{code}` | Audit for one return | Live |
 
-While a call is a stub it answers 501 after validating input. Build the screen against the examples in [api.md](api.md) and switch to the live call when its status changes here.
+Every endpoint is live.
 
 ## Demo data
 
@@ -177,8 +180,8 @@ The answer is `{ access_token, token_type: "bearer", expires_in, role }`. Store 
 
 ### Warehouse
 
-1. Queue: `GET /warehouse/returns?status=in_transit` returns `ReturnSummaryResponse` rows. `customer_flagged` marks frequent returners.
-2. Scan: one text box that accepts a scanner (scanners type the code and press Enter) or a typed code. Then `GET /warehouse/returns/{code}`.
+1. Queue: `GET /warehouse/returns?status=in_transit` returns `ReturnSummaryResponse` rows with `customer_name` and `order_number`. `customer_flagged` marks frequent returners.
+2. Scan: one text box that accepts a scanner (scanners type the code and press Enter) or a typed code. Then `GET /warehouse/returns/{code}`. Staff detail adds `customer_name` and `customer_flagged`; every item has `unit_price`, so the screen can preview the refund (grade C pays 50%).
 3. Receive: `POST /warehouse/returns/{code}/receive`. A 409 on a second scan means it was already received; show "Already received" and continue to inspection.
 4. Inspect: one grade (A/B/C) and one decision per item, with keyboard shortcuts for speed.
 
@@ -206,9 +209,9 @@ Create the key with `crypto.randomUUID()` when the reviewer clicks Retry, and re
 
 ### Operations manager
 
-`GET /dashboard?date_from=2026-11-01&date_to=2026-11-30` returns all four views in one call: `return_rate_by_category`, `top_reasons`, `average_cycle_time_hours` and `flagged_customers`. The three smaller dashboard calls return one view each if a chart refreshes on its own. Use a colour-blind-safe palette and put the value as text on every bar.
+`GET /dashboard?date_from=2026-11-01&date_to=2026-11-30` returns all four views in one call: `return_rate_by_category` (`orders`, `returns` and `return_rate` as a fraction, 0.125 = 12.5%), `top_reasons` (every reason used, most first), `average_cycle_time_hours` (`null` when no return has closed) and `flagged_customers`. Both dates are optional and inclusive. The web app draws the charts from these numbers. The three smaller dashboard calls return one view each if a chart refreshes on its own. Use a colour-blind-safe palette and put the value as text on every bar.
 
-`GET /audit?entity=return_request&page=1` lists audit entries, and `GET /audit/returns/{code}` shows the history of one return.
+`GET /audit?entity=return&page=1` lists audit entries newest first (`entity` is `return`, `refund` or `customer`; add `entity_id` for one record). `GET /audit/returns/{code}` lists everything recorded for one return, oldest first: status changes, payment attempts and finance decisions, each with `action`, `from_status`, `to_status`, `actor` and `actor_role`.
 
 ## Rules the screens must follow
 

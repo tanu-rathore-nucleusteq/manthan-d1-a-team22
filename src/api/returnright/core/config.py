@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     demo_password: str = Field(default="change-me-demo", min_length=8)
 
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
     @field_validator("cors_origins", mode="before")
     @classmethod

@@ -24,7 +24,8 @@ export function ReturnLabelPage() {
 function Label({ code, email }: { code: string; email: string }) {
   const navigate = useNavigate()
   const toast = useToast()
-  const justCreated = (useLocation().state as { created?: boolean } | null)?.created
+  const state = useLocation().state as { created?: boolean; photoUploaded?: boolean } | null
+  const justCreated = state?.created
   const label = useReturnLabel(code, email)
   const detail = useReturnDetail(code, email)
   const shipped = useMarkShipped(code)
@@ -61,6 +62,11 @@ function Label({ code, email }: { code: string; email: string }) {
       {justCreated && (
         <Alert tone="success" title="Return created">
           All items were approved for return. Print this label and attach it to your parcel.
+        </Alert>
+      )}
+      {justCreated && state?.photoUploaded === false && (
+        <Alert tone="warning" title="Your photo didn't upload">
+          Your return is saved. Pack the item as it is; the warehouse will check it on arrival.
         </Alert>
       )}
 

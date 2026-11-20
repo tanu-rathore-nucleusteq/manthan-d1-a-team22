@@ -28,7 +28,9 @@ from returnright.interfaces.payment_gateway import PaymentGateway
 from returnright.repositories.order_repository import OrderRepository
 from returnright.repositories.user_repository import StaffUserRepository
 from returnright.services.approval_service import ApprovalService
+from returnright.services.audit_service import AuditLogService
 from returnright.services.auth_service import AuthService
+from returnright.services.dashboard_service import DashboardService
 from returnright.services.inspection_service import InspectionService
 from returnright.services.order_service import OrderService
 from returnright.services.refund_service import RefundService
@@ -82,11 +84,21 @@ def get_approval_service(
     return ApprovalService(db, clock, refunds)
 
 
+def get_dashboard_service(db: DbSession, clock: AppClock) -> DashboardService:
+    return DashboardService(db, clock)
+
+
+def get_audit_log_service(db: DbSession) -> AuditLogService:
+    return AuditLogService(db)
+
+
 OrderServiceDep = Annotated[OrderService, Depends(get_order_service)]
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 ReturnServiceDep = Annotated[ReturnService, Depends(get_return_service)]
 InspectionServiceDep = Annotated[InspectionService, Depends(get_inspection_service)]
 ApprovalServiceDep = Annotated[ApprovalService, Depends(get_approval_service)]
+DashboardServiceDep = Annotated[DashboardService, Depends(get_dashboard_service)]
+AuditLogServiceDep = Annotated[AuditLogService, Depends(get_audit_log_service)]
 
 # --- Path and header parameters shared by several routers ---------------------------------
 
