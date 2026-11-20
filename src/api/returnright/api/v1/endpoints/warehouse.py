@@ -6,7 +6,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
-from returnright.api.deps import InspectionServiceDep, Pagination, ReturnCode, WarehouseAgent
+from returnright.api.deps import (
+    InspectionServiceDep,
+    Pagination,
+    ReturnCode,
+    WarehouseAgent,
+    WarehouseOrFinance,
+)
 from returnright.domain.enums import ReturnStatus
 from returnright.dtos.requests.warehouse import InspectionRequest
 from returnright.dtos.responses.common import ErrorResponse, PageResponse
@@ -35,11 +41,11 @@ def list_returns(
 @router.get(
     "/returns/{return_code}",
     response_model=ReturnDetailResponse,
-    summary="Find a return by its QR code",
+    summary="Find a return by its QR code (warehouse agents and finance reviewers)",
     responses=NOT_FOUND,
 )
 def get_return(
-    return_code: ReturnCode, user: WarehouseAgent, service: InspectionServiceDep
+    return_code: ReturnCode, user: WarehouseOrFinance, service: InspectionServiceDep
 ) -> ReturnDetailResponse:
     return service.detail(return_code)
 
