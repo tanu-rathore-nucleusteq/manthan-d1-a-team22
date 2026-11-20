@@ -1,5 +1,5 @@
-"""Finance reviewer: list refunds awaiting approval, approve or reject them, and pay approved
-refunds.
+"""Finance reviewer: list returns awaiting approval, approve or reject them, pay approved refunds
+and retry failed ones. Store credit is recorded in the ledger without calling the gateway.
 """
 
 from typing import Annotated
@@ -72,8 +72,12 @@ def get_refund(refund_id: RefundId, user: FinanceReviewer, db: DbSession) -> Ref
 @router.post(
     "/refunds/{refund_id}/pay",
     response_model=RefundResponse,
-    summary="Pay an approved refund through the gateway (idempotent)",
-    description="Send the same Idempotency-Key on every retry: a refund is never paid twice.",
+    summary="Pay an approved refund, or retry a failed one, through the gateway (idempotent)",
+    description=(
+        "Use this to retry a refund whose gateway call failed or timed out. Send the same "
+        "Idempotency-Key on every retry: the gateway call always uses refund-<return_item_id>, "
+        "so a refund is never paid twice."
+    ),
     responses={409: {"description": "Not approved, or already paid with another key"}},
 )
 def pay_refund(

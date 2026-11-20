@@ -25,7 +25,10 @@ router = APIRouter(prefix="/returns", tags=["customer: returns"])
     response_model=ReturnDetailResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Request a return for one or more items",
-    responses={422: {"description": "An item is not eligible; the reason is in the message"}},
+    responses={
+        409: {"description": "An item is already in an open return (for example a double submit)"},
+        422: {"description": "An item is not eligible; the reason is in the message"},
+    },
 )
 def create_return(payload: CreateReturnRequest, db: DbSession) -> ReturnDetailResponse:
     not_implemented("Create return")
