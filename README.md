@@ -6,9 +6,17 @@ Personas: customer, warehouse agent, finance reviewer, operations manager. All d
 
 ## Run it (one command)
 
+With Docker Desktop running, from the repository root:
+
 ```bash
-docker compose up --build
+scripts/start.sh            # Mac, Linux or Git Bash
 ```
+
+```powershell
+.\scripts\start.ps1         # Windows PowerShell
+```
+
+The script builds the three images (`returnright-api`, `returnright-gateway`, `returnright-web`), starts them with PostgreSQL, and waits until every container is healthy. It then shows how many rows of demo data each table has and where to sign in. Add `--reset` (`-Reset` in PowerShell) to reload fresh demo data, or `--stop` (`-Stop`) to stop everything and keep the data. Plain `docker compose up --build` does the same start without the summary.
 
 | What | Where |
 | --- | --- |
