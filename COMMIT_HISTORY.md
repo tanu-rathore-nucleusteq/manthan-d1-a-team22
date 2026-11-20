@@ -44,6 +44,8 @@ Repository: `tanu-rathore-nucleusteq/manthan-d1-a-team22` on GitHub. It was re-c
 
 | Date | Commit | Author | Type | Summary | Area |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-20 | `25a2b44` | tanu-rathore02 | chore | Enforce LF line endings with `.gitattributes`, so Prettier passes on Windows checkouts | repo root |
+| 2026-11-20 | `64bb5fe` | tanu-rathore02 | feat | Frontend scaffold: React 19 + Vite 8 + TypeScript 5.9, ESLint + Prettier, persona feature folders, typed API client; Playwright e2e package; `read-ppt` skill; history files | `src/web/`, `tests/e2e/`, `.claude/`, docs |
 
 ### `main`
 

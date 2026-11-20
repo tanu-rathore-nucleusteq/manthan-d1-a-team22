@@ -32,6 +32,45 @@ Hackathon rule: prompts must contain only synthetic or public data. Never paste 
 
 ## History
 
+### P7: Commit and push to the new repo
+
+| Date | Author | Tool | Phase | Commit |
+| --- | --- | --- | --- | --- |
+| 2026-11-20 | tanu-rathore02 | Claude Code | Setup | `64bb5fe`, `25a2b44` |
+
+**Prompt**
+> commit the changes and push to new repo in separate frontend branch
+
+**Outcome**
+- `main` holds only `.gitignore` and `readme.md` (`74c6505`). Everything else is on the `frontend` branch.
+- Added `.gitattributes` to force LF line endings, so Prettier passes on Windows checkouts.
+- Reset `COMMIT_HISTORY.md` for the new repo, then pushed `main` and `frontend` to origin.
+
+**Files changed:** all; `.gitattributes`, `COMMIT_HISTORY.md`
+**Kept?** Yes
+
+---
+
+### P6: New git remote
+
+| Date | Author | Tool | Phase | Commit |
+| --- | --- | --- | --- | --- |
+| 2026-11-20 | tanu-rathore02 | Claude Code | Setup | — |
+
+**Prompt**
+> i deleted the git repo, set this as new git remote repo
+>
+> https://github.com/tanu-rathore-nucleusteq/manthan-d1-a-team22.git
+
+**Outcome**
+- Ran `git init -b main` in the team folder `manthan-d1-a-team-22`, so the repo root is the team folder, and added the GitHub repo as `origin`.
+- Added a root `.gitignore` covering Python, Node, Playwright, `.env` files and Claude Code personal settings.
+
+**Files changed:** `.gitignore`
+**Kept?** Yes
+
+---
+
 ### P5: Review architecture doc and build frontend structure
 
 | Date | Author | Tool | Phase | Commit |
