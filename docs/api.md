@@ -58,7 +58,7 @@ A `422` validation body looks like this:
 | 4 | GET | [`/api/v1/auth/me`](#op-get-api-v1-auth-me) | The signed-in user and role | Any staff role | Stub |
 | 5 | POST | [`/api/v1/orders/lookup`](#op-post-api-v1-orders-lookup) | Find an order and explain which items can be returned | Customer (no login) | Stub |
 | 6 | POST | [`/api/v1/returns`](#op-post-api-v1-returns) | Request a return for one or more items | Customer (no login) | Stub |
-| 7 | POST | [`/api/v1/returns/{return_code}/photo`](#op-post-api-v1-returns-return-code-photo) | Upload a photo of the item (JPEG or PNG, stored locally) | Customer (no login) | Stub |
+| 7 | POST | [`/api/v1/returns/{return_code}/photo`](#op-post-api-v1-returns-return-code-photo) | Upload a photo of one returned item (JPEG or PNG, stored locally) | Customer (no login) | Stub |
 | 8 | GET | [`/api/v1/returns/{return_code}`](#op-get-api-v1-returns-return-code) | Return details | Customer (no login) | Stub |
 | 9 | GET | [`/api/v1/returns/{return_code}/timeline`](#op-get-api-v1-returns-return-code-timeline) | Status timeline: Requested → … → Refunded or Rejected | Customer (no login) | Stub |
 | 10 | GET | [`/api/v1/returns/{return_code}/label`](#op-get-api-v1-returns-return-code-label) | Mock return label with a QR code | Customer (no login) | Stub |
@@ -71,7 +71,7 @@ A `422` validation body looks like this:
 | 17 | POST | [`/api/v1/finance/approvals/{return_code}/decision`](#op-post-api-v1-finance-approvals-return-code-decision) | Approve or reject a refund above the threshold | Finance reviewer | Stub |
 | 18 | GET | [`/api/v1/finance/refunds`](#op-get-api-v1-finance-refunds) | Refunds by status | Finance reviewer | Stub |
 | 19 | GET | [`/api/v1/finance/refunds/{refund_id}`](#op-get-api-v1-finance-refunds-refund-id) | One refund | Finance reviewer | Stub |
-| 20 | POST | [`/api/v1/finance/refunds/{refund_id}/pay`](#op-post-api-v1-finance-refunds-refund-id-pay) | Pay an approved refund through the gateway (idempotent) | Finance reviewer | Stub |
+| 20 | POST | [`/api/v1/finance/refunds/{refund_id}/pay`](#op-post-api-v1-finance-refunds-refund-id-pay) | Pay an approved refund, or retry a failed one, through the gateway (idempotent) | Finance reviewer | Stub |
 | 21 | GET | [`/api/v1/finance/ledger`](#op-get-api-v1-finance-ledger) | Ledger of gateway refunds and store credit | Finance reviewer | Stub |
 | 22 | GET | [`/api/v1/dashboard`](#op-get-api-v1-dashboard) | All dashboard metrics in one call | Operations manager | Stub |
 | 23 | GET | [`/api/v1/dashboard/return-rates`](#op-get-api-v1-dashboard-return-rates) | Return rate by category | Operations manager | Stub |
@@ -246,11 +246,11 @@ Request a return for one or more items
   "items": [
     {
       "order_item_id": 1,
-      "quantity": 1
+      "quantity": 1,
+      "reason": "damaged",
+      "reason_details": "Seam torn on arrival"
     }
   ],
-  "reason": "damaged",
-  "reason_details": "Seam torn on arrival",
   "refund_method": "original_payment"
 }
 ```
@@ -258,6 +258,7 @@ Request a return for one or more items
 | Status | Meaning | Body |
 | --- | --- | --- |
 | 201 | Success | [`ReturnDetailResponse`](#model-returndetailresponse) |
+| 409 | An item is already in an open return (for example a double submit) | `{"detail": string}` |
 | 422 | An item is not eligible; the reason is in the message | `{"detail": string}` |
 | 501 | Planned, not implemented yet | `{"detail": string}` |
 
@@ -267,13 +268,15 @@ Example response:
 {
   "return_code": "RR-7K2P9QX4",
   "status": "requested",
-  "reason": "damaged",
   "refund_method": "original_payment",
   "items": [
     {
       "return_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
+      "reason": "damaged",
+      "reason_details": "Seam torn on arrival",
+      "photo_urls": [],
       "grade": null,
       "decision": null,
       "refund_amount": "1499.00"
@@ -294,7 +297,7 @@ Example response:
 <a id="op-post-api-v1-returns-return-code-photo"></a>
 ### `POST /api/v1/returns/{return_code}/photo`
 
-Upload a photo of the item (JPEG or PNG, stored locally)
+Upload a photo of one returned item (JPEG or PNG, stored locally)
 
 **Access:** Customer (no login) · **Status:** Stub: returns 501
 
@@ -302,7 +305,7 @@ Upload a photo of the item (JPEG or PNG, stored locally)
 | --- | --- | --- | --- | --- |
 | `return_code` | path | string | yes | Return code on the QR label; min length 6, max length 32, pattern `^[A-Za-z0-9-]+$` |
 
-**Request body:** `multipart/form-data` with `email` (string), `photo` (file)
+**Request body:** `multipart/form-data` with `email` (string), `return_item_id` (integer), `photo` (file)
 
 | Status | Meaning | Body |
 | --- | --- | --- |
@@ -316,6 +319,7 @@ Example response:
 ```json
 {
   "return_code": "RR-7K2P9QX4",
+  "return_item_id": 1,
   "photo_url": "/uploads/RR-7K2P9QX4.jpg",
   "content_type": "image/jpeg",
   "size_bytes": 1
@@ -346,13 +350,15 @@ Example response:
 {
   "return_code": "RR-7K2P9QX4",
   "status": "requested",
-  "reason": "damaged",
   "refund_method": "original_payment",
   "items": [
     {
       "return_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
+      "reason": "damaged",
+      "reason_details": "Seam torn on arrival",
+      "photo_urls": [],
       "grade": null,
       "decision": null,
       "refund_amount": "1499.00"
@@ -460,13 +466,15 @@ Example response:
 {
   "return_code": "RR-7K2P9QX4",
   "status": "requested",
-  "reason": "damaged",
   "refund_method": "original_payment",
   "items": [
     {
       "return_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
+      "reason": "damaged",
+      "reason_details": "Seam torn on arrival",
+      "photo_urls": [],
       "grade": null,
       "decision": null,
       "refund_amount": "1499.00"
@@ -554,13 +562,15 @@ Example response:
 {
   "return_code": "RR-7K2P9QX4",
   "status": "requested",
-  "reason": "damaged",
   "refund_method": "original_payment",
   "items": [
     {
       "return_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
+      "reason": "damaged",
+      "reason_details": "Seam torn on arrival",
+      "photo_urls": [],
       "grade": null,
       "decision": null,
       "refund_amount": "1499.00"
@@ -604,13 +614,15 @@ Example response:
 {
   "return_code": "RR-7K2P9QX4",
   "status": "requested",
-  "reason": "damaged",
   "refund_method": "original_payment",
   "items": [
     {
       "return_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
+      "reason": "damaged",
+      "reason_details": "Seam torn on arrival",
+      "photo_urls": [],
       "grade": null,
       "decision": null,
       "refund_amount": "1499.00"
@@ -674,6 +686,9 @@ Example response:
       "return_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
+      "reason": "damaged",
+      "reason_details": "Seam torn on arrival",
+      "photo_urls": [],
       "grade": null,
       "decision": null,
       "refund_amount": "1499.00"
@@ -860,9 +875,9 @@ Example response:
 <a id="op-post-api-v1-finance-refunds-refund-id-pay"></a>
 ### `POST /api/v1/finance/refunds/{refund_id}/pay`
 
-Pay an approved refund through the gateway (idempotent)
+Pay an approved refund, or retry a failed one, through the gateway (idempotent)
 
-Send the same Idempotency-Key on every retry: a refund is never paid twice.
+Use this to retry a refund whose gateway call failed or timed out. Send the same Idempotency-Key on every retry: the gateway call always uses refund-<return_item_id>, so a refund is never paid twice.
 
 **Access:** Finance reviewer · **Status:** Stub: returns 501
 
@@ -925,8 +940,10 @@ Example response:
     {
       "entry_id": 1,
       "refund_id": 1,
-      "entry_type": "gateway_refund",
+      "entry_type": "refund",
+      "method": "original_payment",
       "amount": "1499.00",
+      "gateway_transaction_id": "gw_9f2c41",
       "created_at": "2026-11-20T10:30:00Z"
     }
   ],
@@ -1169,10 +1186,10 @@ Example response:
 | --- | --- |
 | <a id="model-grade"></a>`Grade` | `A`, `B`, `C` |
 | <a id="model-itemdecision"></a>`ItemDecision` | `accept`, `reject` |
-| <a id="model-ledgerentrytype"></a>`LedgerEntryType` | `gateway_refund`, `store_credit` |
+| <a id="model-ledgerentrytype"></a>`LedgerEntryType` | `refund`, `reversal` |
 | <a id="model-refundmethod"></a>`RefundMethod` | `original_payment`, `store_credit` |
-| <a id="model-refundstatus"></a>`RefundStatus` | `pending_approval`, `approved`, `paid`, `failed`, `rejected` |
-| <a id="model-returnreason"></a>`ReturnReason` | `damaged`, `wrong_item`, `not_as_described`, `size_or_fit`, `no_longer_needed`, `other` |
+| <a id="model-refundstatus"></a>`RefundStatus` | `pending_approval`, `approved`, `processing`, `paid`, `failed`, `rejected` |
+| <a id="model-returnreason"></a>`ReturnReason` | `damaged`, `wrong_item`, `size`, `not_as_described`, `changed_mind`, `quality`, `other` |
 | <a id="model-returnstatus"></a>`ReturnStatus` | `requested`, `approved`, `in_transit`, `received`, `inspected`, `refunded`, `rejected` |
 | <a id="model-role"></a>`Role` | `warehouse_agent`, `finance_reviewer`, `operations_manager` |
 
@@ -1223,8 +1240,6 @@ Unknown fields are rejected.
 | `order_number` | string | yes | pattern `^[A-Za-z0-9-]{4,32}$` |
 | `email` | string | yes | max length 254, pattern `^[^@\s]+@[^@\s]+\.[^@\s]+$` |
 | `items` | list[[`ReturnItemRequest`](#model-returnitemrequest)] | yes | min items 1, max items 20 |
-| `reason` | [`ReturnReason`](#model-returnreason) | yes |  |
-| `reason_details` | string \| null | no | max length 500 |
 | `refund_method` | [`RefundMethod`](#model-refundmethod) | yes |  |
 
 <a id="model-customerproofrequest"></a>
@@ -1328,7 +1343,9 @@ Unknown fields are rejected.
 | `entry_id` | integer | yes |  |
 | `refund_id` | integer | yes |  |
 | `entry_type` | [`LedgerEntryType`](#model-ledgerentrytype) | yes |  |
+| `method` | [`RefundMethod`](#model-refundmethod) | yes |  |
 | `amount` | decimal (string) | yes |  |
+| `gateway_transaction_id` | string \| null | no |  |
 | `created_at` | datetime | yes |  |
 
 <a id="model-livenessresponse"></a>
@@ -1433,6 +1450,7 @@ Unknown fields are rejected.
 | Field | Type | Required | Rules |
 | --- | --- | --- | --- |
 | `return_code` | string | yes |  |
+| `return_item_id` | integer | yes |  |
 | `photo_url` | string | yes |  |
 | `content_type` | string | yes |  |
 | `size_bytes` | integer | yes |  |
@@ -1467,7 +1485,6 @@ Unknown fields are rejected.
 | --- | --- | --- | --- |
 | `return_code` | string | yes |  |
 | `status` | [`ReturnStatus`](#model-returnstatus) | yes |  |
-| `reason` | [`ReturnReason`](#model-returnreason) | yes |  |
 | `refund_method` | [`RefundMethod`](#model-refundmethod) | yes |  |
 | `items` | list[[`ReturnItemResponse`](#model-returnitemresponse)] | yes |  |
 | `timeline` | list[[`StatusEventResponse`](#model-statuseventresponse)] | yes |  |
@@ -1483,6 +1500,8 @@ Unknown fields are rejected.
 | --- | --- | --- | --- |
 | `order_item_id` | integer | yes | > 0.0 |
 | `quantity` | integer | no | ≥ 1.0, ≤ 10.0, default `1` |
+| `reason` | [`ReturnReason`](#model-returnreason) | yes |  |
+| `reason_details` | string \| null | no | max length 500 |
 
 <a id="model-returnitemresponse"></a>
 ### `ReturnItemResponse`
@@ -1492,6 +1511,9 @@ Unknown fields are rejected.
 | `return_item_id` | integer | yes |  |
 | `product_name` | string | yes |  |
 | `quantity` | integer | yes |  |
+| `reason` | [`ReturnReason`](#model-returnreason) | yes |  |
+| `reason_details` | string \| null | no |  |
+| `photo_urls` | list[string] | no | default `[]` |
 | `grade` | [`Grade`](#model-grade) \| null | no |  |
 | `decision` | [`ItemDecision`](#model-itemdecision) \| null | no |  |
 | `refund_amount` | decimal (string) \| null | no |  |

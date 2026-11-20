@@ -197,6 +197,9 @@
               }
             }
           },
+          "409": {
+            "description": "An item is already in an open return (for example a double submit)"
+          },
           "422": {
             "description": "An item is not eligible; the reason is in the message"
           }
@@ -208,7 +211,7 @@
         "tags": [
           "customer: returns"
         ],
-        "summary": "Upload a photo of the item (JPEG or PNG, stored locally)",
+        "summary": "Upload a photo of one returned item (JPEG or PNG, stored locally)",
         "operationId": "upload_photo_api_v1_returns__return_code__photo_post",
         "parameters": [
           {
@@ -1007,8 +1010,8 @@
         "tags": [
           "finance"
         ],
-        "summary": "Pay an approved refund through the gateway (idempotent)",
-        "description": "Send the same Idempotency-Key on every retry: a refund is never paid twice.",
+        "summary": "Pay an approved refund, or retry a failed one, through the gateway (idempotent)",
+        "description": "Use this to retry a refund whose gateway call failed or timed out. Send the same Idempotency-Key on every retry: the gateway call always uses refund-<return_item_id>, so a refund is never paid twice.",
         "operationId": "pay_refund_api_v1_finance_refunds__refund_id__pay_post",
         "security": [
           {
@@ -1682,6 +1685,11 @@
             "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
             "title": "Email"
           },
+          "return_item_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Return Item Id"
+          },
           "photo": {
             "type": "string",
             "contentMediaType": "application/octet-stream",
@@ -1692,6 +1700,7 @@
         "type": "object",
         "required": [
           "email",
+          "return_item_id",
           "photo"
         ],
         "title": "Body_upload_photo_api_v1_returns__return_code__photo_post"
@@ -1746,21 +1755,6 @@
             "minItems": 1,
             "title": "Items"
           },
-          "reason": {
-            "$ref": "#/components/schemas/ReturnReason"
-          },
-          "reason_details": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 500
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reason Details"
-          },
           "refund_method": {
             "$ref": "#/components/schemas/RefundMethod"
           }
@@ -1771,7 +1765,6 @@
           "order_number",
           "email",
           "items",
-          "reason",
           "refund_method"
         ],
         "title": "CreateReturnRequest"
@@ -2091,9 +2084,23 @@
           "entry_type": {
             "$ref": "#/components/schemas/LedgerEntryType"
           },
+          "method": {
+            "$ref": "#/components/schemas/RefundMethod"
+          },
           "amount": {
             "type": "string",
             "title": "Amount"
+          },
+          "gateway_transaction_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gateway Transaction Id"
           },
           "created_at": {
             "type": "string",
@@ -2106,6 +2113,7 @@
           "entry_id",
           "refund_id",
           "entry_type",
+          "method",
           "amount",
           "created_at"
         ],
@@ -2114,10 +2122,11 @@
       "LedgerEntryType": {
         "type": "string",
         "enum": [
-          "gateway_refund",
-          "store_credit"
+          "refund",
+          "reversal"
         ],
-        "title": "LedgerEntryType"
+        "title": "LedgerEntryType",
+        "description": "A refund adds a positive row; a correction adds a negative reversal row."
       },
       "LivenessResponse": {
         "properties": {
@@ -2402,6 +2411,10 @@
             "type": "string",
             "title": "Return Code"
           },
+          "return_item_id": {
+            "type": "integer",
+            "title": "Return Item Id"
+          },
           "photo_url": {
             "type": "string",
             "title": "Photo Url"
@@ -2418,6 +2431,7 @@
         "type": "object",
         "required": [
           "return_code",
+          "return_item_id",
           "photo_url",
           "content_type",
           "size_bytes"
@@ -2518,6 +2532,7 @@
         "enum": [
           "pending_approval",
           "approved",
+          "processing",
           "paid",
           "failed",
           "rejected"
@@ -2532,9 +2547,6 @@
           },
           "status": {
             "$ref": "#/components/schemas/ReturnStatus"
-          },
-          "reason": {
-            "$ref": "#/components/schemas/ReturnReason"
           },
           "refund_method": {
             "$ref": "#/components/schemas/RefundMethod"
@@ -2574,7 +2586,6 @@
         "required": [
           "return_code",
           "status",
-          "reason",
           "refund_method",
           "items",
           "timeline",
@@ -2595,12 +2606,28 @@
             "minimum": 1.0,
             "title": "Quantity",
             "default": 1
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReturnReason"
+          },
+          "reason_details": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Details"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "order_item_id"
+          "order_item_id",
+          "reason"
         ],
         "title": "ReturnItemRequest"
       },
@@ -2617,6 +2644,28 @@
           "quantity": {
             "type": "integer",
             "title": "Quantity"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ReturnReason"
+          },
+          "reason_details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Details"
+          },
+          "photo_urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Photo Urls",
+            "default": []
           },
           "grade": {
             "anyOf": [
@@ -2654,7 +2703,8 @@
         "required": [
           "return_item_id",
           "product_name",
-          "quantity"
+          "quantity",
+          "reason"
         ],
         "title": "ReturnItemResponse"
       },
@@ -2686,12 +2736,14 @@
         "enum": [
           "damaged",
           "wrong_item",
+          "size",
           "not_as_described",
-          "size_or_fit",
-          "no_longer_needed",
+          "changed_mind",
+          "quality",
           "other"
         ],
-        "title": "ReturnReason"
+        "title": "ReturnReason",
+        "description": "Names match return_reasons.code; the service looks up reason_id by name."
       },
       "ReturnStatus": {
         "type": "string",
