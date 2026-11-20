@@ -32,8 +32,13 @@ export function useCreateReturn() {
   return useMutation({
     mutationFn: async ({ body, photo }: { body: CreateReturnRequest; photo: File }) => {
       const created = await backend.createReturn(body)
-      await backend.uploadReturnPhoto(created.return_code, body.email, photo)
-      return created
+      // The return exists once created; a failed photo upload must not hide it (resubmitting
+      // would be refused as a duplicate), so the label page shows a warning instead.
+      const photoUploaded = await backend
+        .uploadReturnPhoto(created.return_code, body.email, photo)
+        .then(() => true)
+        .catch(() => false)
+      return { ...created, photoUploaded }
     },
     onSuccess: (created) => {
       queryClient.setQueryData(returnKeys.detail(created.return_code), created)
