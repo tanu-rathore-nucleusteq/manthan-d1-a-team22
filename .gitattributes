@@ -1,0 +1,3 @@
+# Normalise line endings. Shell scripts stay LF on every OS so they run inside Linux containers.
+* text=auto
+*.sh text eol=lf
