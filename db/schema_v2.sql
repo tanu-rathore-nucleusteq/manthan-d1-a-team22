@@ -1,8 +1,9 @@
 -- ReturnRight database schema v2 (PostgreSQL 18)
 -- Main API tables live in schema "returnright"; the mock gateway's table lives in schema "gateway".
 --
--- Run it (container "pg", any database you choose):
---   docker cp docs/db/schema_v2.sql pg:/tmp/schema_v2.sql
+-- The compose database (docker compose up -d db) loads this file automatically on first start.
+-- To load it into an existing container instead (container "pg", any database you choose):
+--   docker cp db/schema_v2.sql pg:/tmp/schema_v2.sql
 --   docker exec pg psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/schema_v2.sql
 -- App connection string (psycopg 3):
 --   postgresql+psycopg://postgres:change-me@localhost:5433/postgres?options=-csearch_path%3Dreturnright

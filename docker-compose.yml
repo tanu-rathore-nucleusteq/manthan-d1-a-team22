@@ -1,6 +1,9 @@
 # ReturnRight local stack. For now only the database: PostgreSQL 18, which creates every table
-# from docs/db/schema_v2.sql on first start. The API, gateway and web services join this file later.
-# Start: docker compose up -d db   (guide: docs/db/README.md)
+# from db/schema_v2.sql on first start. The API, gateway and web services join this file later.
+# Start:   docker compose up -d db      (ready when `docker compose ps` shows healthy)
+# Connect: localhost:5434, database/user returnright, password change-me (db:5432 from containers)
+# Port taken? Put DB_PORT=5435 in a .env file at the repository root.
+# Rebuild after a schema change (deletes all data): docker compose down -v, then up again.
 name: returnright
 
 services:
@@ -17,7 +20,7 @@ services:
       - "${DB_PORT:-5434}:5432"
     volumes:
       - db-data:/var/lib/postgresql
-      - ./docs/db/schema_v2.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./db/schema_v2.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h localhost -U returnright -d returnright"]
       interval: 5s
