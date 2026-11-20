@@ -1,4 +1,4 @@
-"""POST /api/v1/orders/lookup applies the 30-day window (BR 1.2) to every item.
+"""POST /api/v1/orders/lookup applies each item's category window (30 days for apparel, BR 1.2).
 
 The repository is replaced by an in-memory fake and the clock is fixed, so no database is needed.
 """
@@ -21,7 +21,7 @@ EMAIL = "asha@example.com"
 
 def make_order(order_number: str, delivered_days_ago: int | None) -> SimpleNamespace:
     delivered_at = None if delivered_days_ago is None else NOW - timedelta(days=delivered_days_ago)
-    apparel = SimpleNamespace(name="Apparel")
+    apparel = SimpleNamespace(name="Apparel", is_returnable=True, return_window_days=30)
     return SimpleNamespace(
         order_number=order_number,
         delivered_at=delivered_at,

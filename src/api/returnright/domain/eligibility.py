@@ -1,11 +1,11 @@
 """Eligibility engine: decides per item whether it can be returned (30-day window, 10 days for
 electronics, never innerwear or perishables) and explains why in plain English.
 
-Implemented so far: BR 1.2, the standard 30-day return window. The category rules (electronics,
-innerwear, perishables) plug in here as their stories land.
+The windows come from the categories table, so check_item applies whatever the data says;
+check_return_window is the window rule on its own (BR 1.2).
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 
 STANDARD_RETURN_WINDOW_DAYS = 30
@@ -63,6 +63,44 @@ def check_return_window(
         ),
         days_since_delivery=days,
         window_ends_on=window_ends_on,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class CategoryRule:
+    """The return rule of a product category, as stored in the categories table."""
+
+    name: str
+    is_returnable: bool
+    window_days: int | None
+
+
+def check_item(
+    category: CategoryRule, delivered_on: date | None, today: date
+) -> EligibilityDecision:
+    """Apply the category rule, then the category's return window, to one item."""
+    days = (today - delivered_on).days if delivered_on and delivered_on <= today else None
+
+    if not category.is_returnable or category.window_days is None:
+        return EligibilityDecision(
+            eligible=False,
+            reason=(
+                f"{category.name} can't be returned for hygiene and safety reasons. If the item "
+                "arrived damaged or is not what you ordered, please contact customer support."
+            ),
+            days_since_delivery=days,
+            window_ends_on=None,
+        )
+
+    decision = check_return_window(delivered_on, today, category.window_days)
+    if decision.eligible or days is None or category.window_days == STANDARD_RETURN_WINDOW_DAYS:
+        return decision
+    return replace(
+        decision,
+        reason=(
+            f"{category.name} can only be returned within {category.window_days} days of "
+            f"delivery. {decision.reason}"
+        ),
     )
 
 

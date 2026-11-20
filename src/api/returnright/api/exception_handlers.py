@@ -6,11 +6,40 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from returnright.core.constants import REQUEST_ID_HEADER
-from returnright.core.exceptions import DomainError, OrderNotFoundError
+from returnright.core.exceptions import (
+    ConcurrentUpdateError,
+    DomainError,
+    DuplicateReturnError,
+    InspectionMismatchError,
+    InvalidCredentialsError,
+    InvalidReturnRequestError,
+    InvalidTransitionError,
+    ItemNotEligibleError,
+    NoPendingApprovalError,
+    OrderNotFoundError,
+    PhotoRejectedError,
+    PhotoTooLargeError,
+    RefundNotFoundError,
+    RefundNotPayableError,
+    ReturnNotFoundError,
+)
 from returnright.dtos.responses.common import ErrorResponse
 
 STATUS_BY_ERROR: dict[type[DomainError], int] = {
     OrderNotFoundError: status.HTTP_404_NOT_FOUND,
+    ReturnNotFoundError: status.HTTP_404_NOT_FOUND,
+    RefundNotFoundError: status.HTTP_404_NOT_FOUND,
+    InvalidCredentialsError: status.HTTP_401_UNAUTHORIZED,
+    InvalidReturnRequestError: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    ItemNotEligibleError: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    InspectionMismatchError: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    PhotoRejectedError: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    PhotoTooLargeError: status.HTTP_413_CONTENT_TOO_LARGE,
+    DuplicateReturnError: status.HTTP_409_CONFLICT,
+    InvalidTransitionError: status.HTTP_409_CONFLICT,
+    ConcurrentUpdateError: status.HTTP_409_CONFLICT,
+    NoPendingApprovalError: status.HTTP_409_CONFLICT,
+    RefundNotPayableError: status.HTTP_409_CONFLICT,
 }
 
 
