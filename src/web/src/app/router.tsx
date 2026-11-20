@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate } from 'react-router'
 import { RequireRole } from '../auth/RequireRole'
 import { ROLES, type Role } from '../auth/roles'
 import { LoginPage } from '../features/auth/LoginPage'
+import { SignupPage } from '../features/auth/SignupPage'
 import { ManagerDashboardPage } from '../features/dashboard/pages/ManagerDashboardPage'
 import { ApprovalDetailPage } from '../features/finance/pages/ApprovalDetailPage'
 import { ApprovalQueuePage } from '../features/finance/pages/ApprovalQueuePage'
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
 
       // Staff
       { path: 'login', element: <LoginPage /> },
+      { path: 'signup', element: <SignupPage /> },
       { path: 'warehouse', element: staff([ROLES.warehouseAgent], <WarehouseQueuePage />) },
       {
         path: 'warehouse/returns/:returnCode',

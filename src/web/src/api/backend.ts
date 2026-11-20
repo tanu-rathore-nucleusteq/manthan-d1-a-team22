@@ -9,6 +9,7 @@ import type {
   InspectionResultResponse,
   LedgerEntryResponse,
   LoginRequest,
+  SignupRequest,
   OrderLookupRequest,
   OrderLookupResponse,
   PageResponse,
@@ -26,6 +27,7 @@ import type {
 export interface ReturnRightBackend {
   // Staff auth
   login(body: LoginRequest): Promise<TokenResponse>
+  signup(body: SignupRequest): Promise<void>
 
   // Customer
   lookupOrder(body: OrderLookupRequest): Promise<OrderLookupResponse>

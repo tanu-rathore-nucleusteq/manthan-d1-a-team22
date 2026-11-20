@@ -30,6 +30,17 @@ export type LoginRequest = Schemas['LoginRequest']
 export type TokenResponse = Schemas['TokenResponse']
 export type UserResponse = Schemas['UserResponse']
 
+/**
+ * PROVISIONAL: the signup endpoint is still being built. Replace with
+ * Schemas['SignupRequest'] after `npm run gen:api` once it lands.
+ */
+export interface SignupRequest {
+  full_name: string
+  email: string
+  password: string
+  role: UserResponse['role']
+}
+
 export type OrderLookupRequest = Schemas['OrderLookupRequest']
 export type ItemEligibilityResponse = Schemas['ItemEligibilityResponse']
 export type OrderLookupResponse = Schemas['OrderLookupResponse']

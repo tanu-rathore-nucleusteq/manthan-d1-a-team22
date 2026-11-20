@@ -24,6 +24,16 @@ export function createHttpBackend(
   return {
     login: (body) => call(api.POST('/api/v1/auth/login', { body })),
 
+    // PROVISIONAL path and body until the API publishes the signup endpoint in openapi.json.
+    async signup(body) {
+      const response = await fetch(`${apiBaseUrl}/api/v1/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!response.ok) throw toApiError(response.status, await response.json().catch(() => null))
+    },
+
     lookupOrder: (body) => call(api.POST('/api/v1/orders/lookup', { body })),
 
     createReturn: (body) => call(api.POST('/api/v1/returns', { body })),

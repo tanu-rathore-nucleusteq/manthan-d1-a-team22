@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
 
 import { backend, USE_MOCKS } from '../../api/backend'
@@ -89,7 +89,10 @@ export function LoginPage() {
           <h1 id="auth-title" className="auth__title">
             Sign in
           </h1>
-          <p className="muted">For warehouse, finance and operations staff.</p>
+          <p className="muted">
+            For warehouse, finance and operations staff. New here?{' '}
+            <Link to="/signup">Create an account</Link>
+          </p>
         </div>
 
         {login.isError && (
@@ -128,6 +131,14 @@ export function LoginPage() {
             {!login.isPending && <Icon name="arrowRight" size={16} />}
           </Button>
         </form>
+
+        <div className="auth__divider">
+          <span>New to ReturnRight?</span>
+        </div>
+        <Link to="/signup" className="btn btn--secondary btn--block">
+          <Icon name="users" size={16} />
+          Create a staff account
+        </Link>
 
         {USE_MOCKS && (
           <aside className="demo-panel" aria-label="Demo accounts">

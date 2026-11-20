@@ -203,6 +203,10 @@ function CustomerShell({ onReset }: { onReset: () => void }) {
               <Icon name="logIn" size={16} />
               Staff sign in
             </NavLink>
+            <NavLink to="/signup" className="btn btn--primary btn--sm">
+              <Icon name="users" size={16} />
+              Sign up
+            </NavLink>
           </div>
         </div>
       </header>

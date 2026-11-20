@@ -7,6 +7,7 @@ import type {
   ReturnReason,
   ReturnStatus,
   ReturnSummaryResponse,
+  SignupRequest,
 } from '../types'
 import { mockQrSvg } from './qr'
 import {
@@ -165,19 +166,62 @@ function pay(refund: MockRefund, approvedBy: string | null) {
 
 // ---- Backend --------------------------------------------------------------------------
 
+// Accounts created on the signup page in demo mode; they last until the tab closes.
+const SIGNUP_KEY = 'returnright.mock.signups'
+type MockSignup = SignupRequest
+
+function loadSignups(): MockSignup[] {
+  try {
+    return JSON.parse(sessionStorage.getItem(SIGNUP_KEY) ?? '[]') as MockSignup[]
+  } catch {
+    return []
+  }
+}
+
+function saveSignups(list: MockSignup[]) {
+  try {
+    sessionStorage.setItem(SIGNUP_KEY, JSON.stringify(list))
+  } catch {
+    // Storage blocked: the account only lasts for this page view.
+  }
+}
+
 export const mockBackend: ReturnRightBackend = {
   async login({ username, password }) {
     await delay()
-    const user = DEMO_STAFF.find((u) => u.username === username.trim().toLowerCase())
-    if (!user || password !== DEMO_PASSWORD) {
-      fail(401, 'invalid_credentials', 'Username or password is incorrect.')
+    const login = username.trim().toLowerCase()
+    const demo = DEMO_STAFF.find((u) => u.username === login)
+    if (demo && password === DEMO_PASSWORD) {
+      return {
+        access_token: `mock.${demo.role}`,
+        token_type: 'bearer',
+        expires_in: 28_800,
+        role: demo.role,
+      }
+    }
+    // Signed-up accounts sign in with the full email or the part before the @, like the API.
+    const created = loadSignups().find((s) => s.email === login || s.email.split('@')[0] === login)
+    if (!created || created.password !== password) {
+      return fail(401, 'invalid_credentials', 'Username or password is incorrect.')
     }
     return {
-      access_token: `mock.${user!.role}`,
+      access_token: `mock.${created.role}`,
       token_type: 'bearer',
       expires_in: 28_800,
-      role: user!.role,
+      role: created.role,
     }
+  },
+
+  async signup(body) {
+    await delay(500, 900)
+    const email = body.email.trim().toLowerCase()
+    const list = loadSignups()
+    const taken =
+      list.some((s) => s.email === email) ||
+      DEMO_STAFF.some((u) => u.username === email.split('@')[0])
+    if (taken)
+      fail(409, 'email_taken', 'An account with this email already exists. Sign in instead.')
+    saveSignups([...list, { ...body, email, full_name: body.full_name.trim() }])
   },
 
   async lookupOrder({ order_number, email }) {
