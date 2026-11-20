@@ -106,12 +106,13 @@ function Wizard({ orderNumber, deliveredOn, items, email }: WizardProps) {
         body: {
           order_number: orderNumber,
           email,
+          // One reason for the whole return, sent on each item as the API expects.
           items: chosen.map((i) => ({
             order_item_id: i.order_item_id,
             quantity: selected[i.order_item_id],
+            reason: reason!,
+            reason_details: details.trim() || null,
           })),
-          reason: reason!,
-          reason_details: details.trim() || null,
           refund_method: method!,
         },
         photo: photo!,

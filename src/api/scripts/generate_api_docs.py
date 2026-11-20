@@ -81,6 +81,10 @@ TAG_ROLES = {
     "dashboard": "Operations manager",
     "audit": "Operations manager",
 }
+# Routes that accept more roles than their tag suggests.
+ROUTE_ROLES = {
+    ("GET", "/api/v1/warehouse/returns/{return_code}"): "Warehouse agent, finance reviewer",
+}
 
 # Sample values for examples, chosen by field name.
 SAMPLES: dict[str, Any] = {
@@ -246,7 +250,8 @@ def json_block(value: Any) -> str:
 def access_of(method: str, path: str, op: dict) -> str:
     if not op.get("security"):
         return "Customer (no login)" if op["tags"][0].startswith("customer") else "Public"
-    return TAG_ROLES.get(op["tags"][0], "Signed-in staff")
+    route_roles = ROUTE_ROLES.get((method.upper(), path))
+    return route_roles or TAG_ROLES.get(op["tags"][0], "Signed-in staff")
 
 
 def status_of(method: str, path: str) -> str:

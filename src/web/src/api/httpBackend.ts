@@ -1,258 +1,118 @@
-import { getStoredSession } from '../auth/session'
 import type { ReturnRightBackend } from './backend'
-import { ApiError } from './errors'
-import type {
-  DashboardResponse,
-  ErrorResponse,
-  InspectionResultResponse,
-  LedgerEntryResponse,
-  OrderLookupResponse,
-  PageResponse,
-  PendingApprovalResponse,
-  ReasonCountResponse,
-  RefundMethod,
-  ReturnDetailResponse,
-  ReturnItemResponse,
-  ReturnLabelResponse,
-  ReturnReason,
-  ReturnSummaryResponse,
-  TokenResponse,
-} from './types'
+import { api, apiBaseUrl } from './client'
+import { toApiError } from './errors'
 
-const ORIGIN = import.meta.env.VITE_API_BASE_URL ?? ''
-const API_ROOT = `${ORIGIN}/api/v1`
-/** Lists are paged by the API; the screens show one page, so ask for the largest one. */
-const PAGE_SIZE = '100'
-
-// ---- Wire shapes that differ from the UI types ------------------------------------------
-
-type ApiReturnReason =
-  'damaged' | 'wrong_item' | 'size' | 'not_as_described' | 'changed_mind' | 'quality' | 'other'
-
-/** The API keeps the reason and photos per item; the UI shows them once per return. */
-type ApiReturnItem = ReturnItemResponse & {
-  order_item_id: number
-  reason: ApiReturnReason
-  reason_details?: string | null
-  photo_urls: string[]
+/** Unwraps an openapi-fetch result, turning any non-2xx answer into an ApiError. */
+async function call<T>(request: Promise<{ data?: T; error?: unknown; response: Response }>) {
+  const { data, error, response } = await request
+  if (!response.ok || data === undefined) throw toApiError(response.status, error)
+  return data
 }
 
-type ApiReturnDetail = Omit<ReturnDetailResponse, 'reason' | 'items'> & { items: ApiReturnItem[] }
+const customer = (email: string) => ({ 'X-Customer-Email': email })
 
-type ApiLedgerEntry = Omit<LedgerEntryResponse, 'entry_type'> & {
-  entry_type: 'refund' | 'reversal'
-  method: RefundMethod
-}
+/** Largest page the API serves; the queues are short, so one page holds them all. */
+const ALL = { page: 1, size: 100 }
 
-type ApiDashboard = Omit<DashboardResponse, 'top_reasons'> & {
-  top_reasons: { reason: ApiReturnReason; count: number }[]
-}
-
-const API_REASON: Record<ReturnReason, ApiReturnReason> = {
-  damaged: 'damaged',
-  wrong_item: 'wrong_item',
-  not_as_described: 'not_as_described',
-  size_or_fit: 'size',
-  no_longer_needed: 'changed_mind',
-  other: 'other',
-}
-
-const UI_REASON: Record<ApiReturnReason, ReturnReason> = {
-  damaged: 'damaged',
-  wrong_item: 'wrong_item',
-  size: 'size_or_fit',
-  not_as_described: 'not_as_described',
-  changed_mind: 'no_longer_needed',
-  quality: 'other',
-  other: 'other',
-}
-
-// ---- HTTP -------------------------------------------------------------------------------
-
-interface RequestOptions {
-  method?: 'GET' | 'POST'
-  body?: unknown
-  /** Customer GETs prove ownership with this header instead of a login. */
-  email?: string
-  query?: Record<string, string>
-}
-
-const FALLBACK_ERROR: Record<number, ErrorResponse> = {
-  401: { code: 'unauthorized', message: 'Please sign in again to continue.' },
-  403: { code: 'forbidden', message: "Your role doesn't have access to this page." },
-  422: {
-    code: 'validation_error',
-    message: 'Some details are missing or invalid. Please check them and try again.',
-  },
-}
-
-/** Turns any error body into the ApiError the screens already handle. */
-function toApiError(status: number, data: unknown): ApiError {
-  const body = (data ?? {}) as Partial<ErrorResponse> & { detail?: unknown }
-  if (body.code && body.message) return new ApiError(status, body as ErrorResponse)
-  const detail = typeof body.detail === 'string' && body.detail ? body.detail : null
-  return new ApiError(
-    status,
-    FALLBACK_ERROR[status] ?? {
-      code: `http_${status}`,
-      message: detail ?? 'Something went wrong. Please try again.',
-    },
-  )
-}
-
-async function request<T>(
-  path: string,
-  { method = 'GET', body, email, query }: RequestOptions = {},
-): Promise<T> {
-  const headers = new Headers()
-  const token = getStoredSession()?.token
-  if (token) headers.set('Authorization', `Bearer ${token}`)
-  if (email) headers.set('X-Customer-Email', email)
-  let payload: BodyInit | undefined
-  if (body instanceof FormData) {
-    payload = body
-  } else if (body !== undefined) {
-    headers.set('Content-Type', 'application/json')
-    payload = JSON.stringify(body)
-  }
-  const url = `${API_ROOT}${path}${query ? `?${new URLSearchParams(query)}` : ''}`
-
-  let response: Response
-  try {
-    response = await fetch(url, { method, headers, body: payload })
-  } catch {
-    throw new ApiError(0, {
-      code: 'network_error',
-      message: "We couldn't reach ReturnRight. Check your connection and try again.",
-    })
-  }
-  const data: unknown = await response.json().catch(() => null)
-  if (!response.ok) throw toApiError(response.status, data)
-  return data as T
-}
-
-const codePath = (code: string) => encodeURIComponent(code.trim().toUpperCase())
-
-// ---- Mapping ----------------------------------------------------------------------------
-
-function toDetail(detail: ApiReturnDetail): ReturnDetailResponse {
-  const first = detail.items[0]
-  const photo = detail.items.flatMap((i) => i.photo_urls)[0]
+/**
+ * The live ReturnRight API (docs/api.md). Every implemented endpoint the screens use is
+ * called here; the dashboard is still a stub on the server, so it stays on the mock.
+ */
+export function createHttpBackend(
+  dashboard: ReturnRightBackend['getDashboard'],
+): ReturnRightBackend {
   return {
-    ...detail,
-    reason: UI_REASON[first.reason],
-    reason_details: first.reason_details ?? null,
-    photo_url: photo ? `${ORIGIN}${photo}` : null,
-  }
-}
+    login: (body) => call(api.POST('/api/v1/auth/login', { body })),
 
-/** Several API reasons can share one UI label, so counts are merged after mapping. */
-function toTopReasons(rows: ApiDashboard['top_reasons']): ReasonCountResponse[] {
-  const counts = new Map<ReturnReason, number>()
-  for (const { reason, count } of rows) {
-    counts.set(UI_REASON[reason], (counts.get(UI_REASON[reason]) ?? 0) + count)
-  }
-  return [...counts].map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count)
-}
+    lookupOrder: (body) => call(api.POST('/api/v1/orders/lookup', { body })),
 
-const staffDetail = async (code: string) =>
-  toDetail(await request<ApiReturnDetail>(`/warehouse/returns/${codePath(code)}`))
+    createReturn: (body) => call(api.POST('/api/v1/returns', { body })),
 
-// ---- Backend ----------------------------------------------------------------------------
-
-export const httpBackend: ReturnRightBackend = {
-  login: (body) => request<TokenResponse>('/auth/login', { method: 'POST', body }),
-
-  lookupOrder: (body) => request<OrderLookupResponse>('/orders/lookup', { method: 'POST', body }),
-
-  async createReturn({ reason, reason_details, items, ...body }) {
-    const created = await request<ApiReturnDetail>('/returns', {
-      method: 'POST',
-      body: {
-        ...body,
-        items: items.map((item) => ({ ...item, reason: API_REASON[reason], reason_details })),
-      },
-    })
-    return toDetail(created)
-  },
-
-  async uploadReturnPhoto(returnCode, email, photo) {
-    const detail = await request<ApiReturnDetail>(`/returns/${codePath(returnCode)}`, { email })
-    // The wizard takes one photo of the parcel; the API stores photos per item, so attach it to each.
-    for (const item of detail.items) {
+    // multipart/form-data: posted with fetch so the browser sets the boundary itself.
+    async uploadReturnPhoto(returnCode, email, returnItemId, photo) {
       const form = new FormData()
       form.append('email', email)
-      form.append('return_item_id', String(item.return_item_id))
+      form.append('return_item_id', String(returnItemId))
       form.append('photo', photo)
-      await request(`/returns/${codePath(returnCode)}/photo`, { method: 'POST', body: form })
-    }
-  },
+      const response = await fetch(
+        `${apiBaseUrl}/api/v1/returns/${encodeURIComponent(returnCode)}/photo`,
+        { method: 'POST', body: form },
+      )
+      if (!response.ok) throw toApiError(response.status, await response.json().catch(() => null))
+    },
 
-  getReturn: async (returnCode, { email }) =>
-    toDetail(await request<ApiReturnDetail>(`/returns/${codePath(returnCode)}`, { email })),
+    getReturn: (returnCode, { email }) =>
+      call(
+        api.GET('/api/v1/returns/{return_code}', {
+          params: { path: { return_code: returnCode }, header: customer(email) },
+        }),
+      ),
 
-  getLabel: (returnCode, { email }) =>
-    request<ReturnLabelResponse>(`/returns/${codePath(returnCode)}/label`, { email }),
+    getLabel: (returnCode, { email }) =>
+      call(
+        api.GET('/api/v1/returns/{return_code}/label', {
+          params: { path: { return_code: returnCode }, header: customer(email) },
+        }),
+      ),
 
-  markShipped: async (returnCode, { email }) =>
-    toDetail(
-      await request<ApiReturnDetail>(`/returns/${codePath(returnCode)}/ship`, {
-        method: 'POST',
-        body: { email },
-      }),
-    ),
+    markShipped: (returnCode, body) =>
+      call(
+        api.POST('/api/v1/returns/{return_code}/ship', {
+          params: { path: { return_code: returnCode } },
+          body,
+        }),
+      ),
 
-  listWarehouseQueue: (status) =>
-    request<PageResponse<ReturnSummaryResponse>>('/warehouse/returns', {
-      query: { status, size: PAGE_SIZE },
-    }),
+    listWarehouseQueue: (status) =>
+      call(api.GET('/api/v1/warehouse/returns', { params: { query: { status, ...ALL } } })),
 
-  getReturnForStaff: staffDetail,
+    getReturnForStaff: (returnCode) =>
+      call(
+        api.GET('/api/v1/warehouse/returns/{return_code}', {
+          params: { path: { return_code: returnCode } },
+        }),
+      ),
 
-  markReceived: async (returnCode) =>
-    toDetail(
-      await request<ApiReturnDetail>(`/warehouse/returns/${codePath(returnCode)}/receive`, {
-        method: 'POST',
-      }),
-    ),
+    markReceived: (returnCode) =>
+      call(
+        api.POST('/api/v1/warehouse/returns/{return_code}/receive', {
+          params: { path: { return_code: returnCode } },
+        }),
+      ),
 
-  inspectReturn: (returnCode, body) =>
-    request<InspectionResultResponse>(`/warehouse/returns/${codePath(returnCode)}/inspection`, {
-      method: 'POST',
-      body,
-    }),
+    inspectReturn: (returnCode, body) =>
+      call(
+        api.POST('/api/v1/warehouse/returns/{return_code}/inspection', {
+          params: { path: { return_code: returnCode } },
+          body,
+        }),
+      ),
 
-  async listPendingApprovals() {
-    const page = await request<PageResponse<PendingApprovalResponse>>('/finance/approvals', {
-      query: { size: PAGE_SIZE },
-    })
-    return page.items
-  },
+    listPendingApprovals: async () =>
+      (await call(api.GET('/api/v1/finance/approvals', { params: { query: ALL } }))).items,
 
-  async decideApproval(returnCode, body) {
-    await request(`/finance/approvals/${codePath(returnCode)}/decision`, { method: 'POST', body })
-    return staffDetail(returnCode)
-  },
+    decideApproval: (returnCode, body) =>
+      call(
+        api.POST('/api/v1/finance/approvals/{return_code}/decision', {
+          params: { path: { return_code: returnCode } },
+          body,
+        }),
+      ),
 
-  async listLedger() {
-    // The ledger screen shows totals, so it needs every entry, not only the first page.
-    const entries: ApiLedgerEntry[] = []
-    for (let page = 1; ; page++) {
-      const result = await request<PageResponse<ApiLedgerEntry>>('/finance/ledger', {
-        query: { size: PAGE_SIZE, page: String(page) },
-      })
-      entries.push(...result.items)
-      if (result.items.length === 0 || entries.length >= result.total) break
-    }
-    const items = entries.map((entry): LedgerEntryResponse => ({
-      ...entry,
-      entry_type: entry.method === 'original_payment' ? 'gateway_refund' : 'store_credit',
-    }))
-    return { items, total: items.length, page: 1, size: items.length }
-  },
+    async listLedger() {
+      // The ledger screen shows totals, so it needs every entry, not only the first page.
+      const first = await call(api.GET('/api/v1/finance/ledger', { params: { query: ALL } }))
+      const items = [...first.items]
+      for (let page = 2; items.length < first.total; page++) {
+        const next = await call(
+          api.GET('/api/v1/finance/ledger', { params: { query: { ...ALL, page } } }),
+        )
+        if (next.items.length === 0) break
+        items.push(...next.items)
+      }
+      return { ...first, items, size: items.length }
+    },
 
-  async getDashboard() {
-    const dashboard = await request<ApiDashboard>('/dashboard')
-    return { ...dashboard, top_reasons: toTopReasons(dashboard.top_reasons) }
-  },
+    getDashboard: dashboard,
+  }
 }

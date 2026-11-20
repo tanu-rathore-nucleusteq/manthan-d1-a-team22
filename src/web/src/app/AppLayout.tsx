@@ -14,6 +14,7 @@ import {
 } from '../auth/roles'
 import type { Session } from '../auth/session'
 import { Icon } from '../components/ui/Icon'
+import { ThemeToggle } from '../components/ui/ThemeToggle'
 
 const CUSTOMER_NAV: NavItem[] = [
   { to: '/returns', label: 'Start a return', icon: 'package', end: true },
@@ -170,12 +171,7 @@ function StaffShell({
             <Icon name="chevronRight" size={14} className="appbar__sep" />
             <span className="appbar__role">{ROLE_LABEL[session.role]}</span>
           </div>
-          {USE_MOCKS && (
-            <span className="env-pill">
-              <span className="env-pill__dot" aria-hidden="true" />
-              Demo environment
-            </span>
-          )}
+          <ThemeToggle />
         </header>
 
         <main id="main" tabIndex={-1} className="main main--staff">
@@ -201,10 +197,13 @@ function CustomerShell({ onReset }: { onReset: () => void }) {
               </NavLink>
             ))}
           </nav>
-          <NavLink to="/login" className="btn btn--secondary btn--sm topbar__staff">
-            <Icon name="logIn" size={16} />
-            Staff sign in
-          </NavLink>
+          <div className="topbar__actions">
+            <ThemeToggle />
+            <NavLink to="/login" className="btn btn--secondary btn--sm">
+              <Icon name="logIn" size={16} />
+              Staff sign in
+            </NavLink>
+          </div>
         </div>
       </header>
 

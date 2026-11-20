@@ -32,12 +32,22 @@ export function useCreateReturn() {
   return useMutation({
     mutationFn: async ({ body, photo }: { body: CreateReturnRequest; photo: File }) => {
       const created = await backend.createReturn(body)
-      // The return exists once created; a failed photo upload must not hide it (resubmitting
-      // would be refused as a duplicate), so the label page shows a warning instead.
-      const photoUploaded = await backend
-        .uploadReturnPhoto(created.return_code, body.email, photo)
-        .then(() => true)
-        .catch(() => false)
+      // The API stores photos per returned item; attach the one photo to each of them. The
+      // return exists once created, so a failed upload must not hide it (resubmitting would be
+      // refused as a duplicate): the label page shows a warning instead.
+      let photoUploaded = true
+      try {
+        for (const item of created.items) {
+          await backend.uploadReturnPhoto(
+            created.return_code,
+            body.email,
+            item.return_item_id,
+            photo,
+          )
+        }
+      } catch {
+        photoUploaded = false
+      }
       return { ...created, photoUploaded }
     },
     onSuccess: (created) => {

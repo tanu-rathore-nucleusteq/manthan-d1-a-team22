@@ -70,8 +70,9 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Dark palette: follows the OS unless the user picked a theme (data-theme on <html>). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #0b0d12;
     --surface: #12151c;
     --surface-2: #161a22;
@@ -112,6 +113,48 @@
     --shadow-lg: 0 16px 40px rgb(0 0 0 / 55%);
     color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+  --bg: #0b0d12;
+  --surface: #12151c;
+  --surface-2: #161a22;
+  --surface-sunken: #1b2029;
+  --border: #252b36;
+  --border-strong: #343b48;
+  --text: #e8eaef;
+  --text-2: #aab1be;
+  --text-3: #8b93a2;
+
+  --accent: #818cf8;
+  --accent-hover: #a5b4fc;
+  --accent-soft: #1e1f45;
+  --accent-soft-2: #282a5c;
+  --accent-text: #0b0d12;
+  --focus-ring: 0 0 0 4px rgb(129 140 248 / 30%);
+
+  --info-bg: #13233f;
+  --info-fg: #93bbfa;
+  --success-bg: #0f2c1f;
+  --success-fg: #7ad7a3;
+  --warning-bg: #33240c;
+  --warning-fg: #f5c46c;
+  --danger-bg: #3a1614;
+  --danger-fg: #f69a91;
+  --neutral-bg: #222833;
+  --neutral-fg: #c2c8d3;
+
+  --sidebar-bg: #090b10;
+  --sidebar-border: #1a1f2a;
+
+  --chart-1: #818cf8;
+  --chart-track: #222833;
+
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow: 0 4px 12px rgb(0 0 0 / 30%);
+  --shadow-lg: 0 16px 40px rgb(0 0 0 / 55%);
+  color-scheme: dark;
 }
 
 /* ==========================================================================
@@ -601,8 +644,21 @@ p code,
   flex: 1;
   flex-wrap: wrap;
 }
-.topbar__staff {
+.topbar__actions {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+.theme-toggle:hover {
+  background: var(--surface-2);
 }
 .nav-link {
   display: inline-flex;

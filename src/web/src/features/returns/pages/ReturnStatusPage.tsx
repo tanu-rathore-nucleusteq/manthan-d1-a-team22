@@ -96,7 +96,7 @@ function Status({ code, email }: { code: string; email: string }) {
             <dl className="facts">
               <div>
                 <dt>Reason</dt>
-                <dd>{REASON_LABEL[r.reason]}</dd>
+                <dd>{[...new Set(r.items.map((i) => REASON_LABEL[i.reason]))].join(', ')}</dd>
               </div>
               <div>
                 <dt>Refund to</dt>

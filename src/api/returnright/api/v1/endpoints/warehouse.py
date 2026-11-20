@@ -10,8 +10,8 @@ from returnright.api.deps import (
     InspectionServiceDep,
     Pagination,
     ReturnCode,
-    ReturnReviewer,
     WarehouseAgent,
+    WarehouseOrFinance,
 )
 from returnright.domain.enums import ReturnStatus
 from returnright.dtos.requests.warehouse import InspectionRequest
@@ -41,11 +41,11 @@ def list_returns(
 @router.get(
     "/returns/{return_code}",
     response_model=ReturnDetailResponse,
-    summary="Find a return by its QR code",
+    summary="Find a return by its QR code (warehouse agents and finance reviewers)",
     responses=NOT_FOUND,
 )
 def get_return(
-    return_code: ReturnCode, user: ReturnReviewer, service: InspectionServiceDep
+    return_code: ReturnCode, user: WarehouseOrFinance, service: InspectionServiceDep
 ) -> ReturnDetailResponse:
     return service.detail(return_code)
 

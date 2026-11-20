@@ -184,8 +184,8 @@ def require_role(*roles: Role) -> Callable[..., CurrentUser]:
 AnyStaff = Annotated[CurrentUser, Depends(require_role(*Role))]
 WarehouseAgent = Annotated[CurrentUser, Depends(require_role(Role.WAREHOUSE_AGENT))]
 FinanceReviewer = Annotated[CurrentUser, Depends(require_role(Role.FINANCE_REVIEWER))]
-# Finance opens the same return detail as the warehouse before deciding an approval.
-ReturnReviewer = Annotated[
+# Read-only return detail: finance needs item names, grades and photos to decide an approval.
+WarehouseOrFinance = Annotated[
     CurrentUser, Depends(require_role(Role.WAREHOUSE_AGENT, Role.FINANCE_REVIEWER))
 ]
 OperationsManager = Annotated[CurrentUser, Depends(require_role(Role.OPS_MANAGER))]

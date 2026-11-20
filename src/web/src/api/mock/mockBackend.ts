@@ -30,14 +30,16 @@ import {
   type MockState,
 } from './seed'
 
-const STORAGE_KEY = 'returnright.mock.v1'
+// v2: reasons, photos and ledger rows follow the live API contract.
+const STORAGE_KEY = 'returnright.mock.v2'
 const WAREHOUSE_ADDRESS =
   'ReturnRight Returns Centre, Plot 14, Sector 3, Pithampur, Madhya Pradesh 454775'
 
 // ---- State (persisted in sessionStorage so a reload keeps the demo where it was) -------
 
 let state: MockState = load()
-const photos = new Map<string, string>()
+/** Object URLs of uploaded photos, by return_item_id. Kept in memory only. */
+const photos = new Map<number, string>()
 
 function load(): MockState {
   try {
@@ -109,25 +111,25 @@ function toDetail(ret: MockReturn): ReturnDetailResponse {
   return {
     return_code: ret.return_code,
     status: ret.status,
-    reason: ret.reason,
     refund_method: ret.refund_method,
-    items: ret.items.map((i) => ({
-      return_item_id: i.return_item_id,
-      product_name: i.product_name,
-      quantity: i.quantity,
-      grade: i.grade,
-      decision: i.decision,
-      refund_amount: i.refund_amount === null ? null : toMoney(i.refund_amount),
-      unit_price: toMoney(i.unit_price),
-    })),
+    items: ret.items.map((i) => {
+      const photo = photos.get(i.return_item_id)
+      return {
+        return_item_id: i.return_item_id,
+        order_item_id: i.order_item_id,
+        product_name: i.product_name,
+        quantity: i.quantity,
+        reason: ret.reason,
+        reason_details: ret.reason_details,
+        photo_urls: photo ? [photo] : [],
+        grade: i.grade,
+        decision: i.decision,
+        refund_amount: i.refund_amount === null ? null : toMoney(i.refund_amount),
+      }
+    }),
     timeline: [...ret.timeline],
     refund_total: graded ? toMoney(sum(refunds.map((r) => r.amount))) : null,
     created_at: ret.created_at,
-    order_number: ret.order_number,
-    reason_details: ret.reason_details,
-    photo_url: photos.get(ret.return_code) ?? null,
-    customer_name: customerOf(ret.customer_id).name,
-    customer_flagged: isFlagged(ret.customer_id),
   }
 }
 
@@ -136,7 +138,8 @@ function toSummary(ret: MockReturn): ReturnSummaryResponse {
   return {
     return_code: ret.return_code,
     status: ret.status,
-    customer_name: customerOf(ret.customer_id).name,
+    order_number: ret.order_number,
+    customer_flagged: isFlagged(ret.customer_id),
     item_count: sum(ret.items.map((i) => i.quantity)),
     refund_total: refunds.length ? toMoney(sum(refunds.map((r) => r.amount))) : null,
     created_at: ret.created_at,
@@ -152,7 +155,9 @@ function pay(refund: MockRefund, approvedBy: string | null) {
   state.ledger.push({
     entry_id: state.next.entryId++,
     refund_id: refund.refund_id,
-    entry_type: refund.method === 'original_payment' ? 'gateway_refund' : 'store_credit',
+    entry_type: 'refund',
+    method: refund.method,
+    gateway_transaction_id: refund.gateway_transaction_id,
     amount: refund.amount,
     created_at: now(),
   })
@@ -243,8 +248,9 @@ export const mockBackend: ReturnRightBackend = {
       order_number: order.order_number,
       customer_id: order.customer_id,
       status: 'requested',
-      reason: body.reason,
-      reason_details: body.reason_details ?? null,
+      // The mock keeps one reason per return; the UI sends the same reason on every item.
+      reason: body.items[0].reason,
+      reason_details: body.items[0].reason_details ?? null,
       refund_method: body.refund_method,
       items,
       timeline: [{ status: 'requested', at, note: 'Return requested by the customer' }],
@@ -257,11 +263,14 @@ export const mockBackend: ReturnRightBackend = {
     return toDetail(ret)
   },
 
-  async uploadReturnPhoto(returnCode, email, photo) {
+  async uploadReturnPhoto(returnCode, email, returnItemId, photo) {
     await delay(400, 800)
     const ret = findReturn(returnCode)
     requireProof(ret, email)
-    photos.set(ret.return_code, URL.createObjectURL(photo))
+    if (!ret.items.some((i) => i.return_item_id === returnItemId)) {
+      fail(404, 'return_item_not_found', 'That item is not part of this return.')
+    }
+    photos.set(returnItemId, URL.createObjectURL(photo))
   },
 
   async getReturn(returnCode, { email }) {
@@ -432,7 +441,13 @@ export const mockBackend: ReturnRightBackend = {
       )
     }
     save()
-    return toDetail(ret)
+    const refunds = state.refunds.filter((r) => r.return_code === ret.return_code)
+    return {
+      return_code: ret.return_code,
+      customer_flagged: isFlagged(ret.customer_id),
+      refund_total: toMoney(sum(refunds.map((r) => r.amount))),
+      refunds: refunds.map((r) => ({ ...r, amount: toMoney(r.amount) })),
+    }
   },
 
   async listLedger() {

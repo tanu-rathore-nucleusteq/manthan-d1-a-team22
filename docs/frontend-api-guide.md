@@ -69,7 +69,7 @@ The API sends the lowercase value; show the label.
 | 10 | `GET /returns/{code}/label` | Label page | Live |
 | 11 | `POST /returns/{code}/ship` | Label page / track page | Live |
 | 12 | `GET /warehouse/returns` | Warehouse queue | Live |
-| 13 | `GET /warehouse/returns/{code}` | Warehouse scan | Live |
+| 13 | `GET /warehouse/returns/{code}` | Warehouse scan; finance approval detail (names, grades, photos) | Live |
 | 14 | `POST /warehouse/returns/{code}/receive` | Warehouse scan | Live |
 | 15 | `POST /warehouse/returns/{code}/inspection` | Warehouse inspection | Live |
 | 16 | `GET /finance/approvals` | Finance queue | Live |
