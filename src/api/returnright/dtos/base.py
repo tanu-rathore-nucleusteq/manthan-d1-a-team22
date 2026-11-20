@@ -8,6 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field
 Money = Annotated[Decimal, Field(max_digits=12, decimal_places=2, ge=0)]
 """An amount in INR with two decimal places. Never use float for money."""
 
+SignedMoney = Annotated[Decimal, Field(max_digits=12, decimal_places=2)]
+"""Money that can be negative, such as a ledger reversal."""
+
 ORDER_NUMBER_PATTERN = r"^[A-Za-z0-9-]{4,32}$"
 EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 

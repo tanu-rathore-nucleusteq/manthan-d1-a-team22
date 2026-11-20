@@ -94,6 +94,20 @@ class NoPendingApprovalError(DomainError):
         super().__init__("This return isn't waiting for a finance decision.")
 
 
+class AlreadyDecidedError(DomainError):
+    code = "already_decided"
+
+    def __init__(self) -> None:
+        super().__init__("Finance has already decided on this return.")
+
+
+class LabelUnavailableError(DomainError):
+    code = "label_unavailable"
+
+    def __init__(self) -> None:
+        super().__init__("This return was rejected, so it has no shipping label.")
+
+
 class RefundNotPayableError(DomainError):
     code = "refund_not_payable"
 

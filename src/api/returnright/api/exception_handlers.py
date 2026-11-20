@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from returnright.core.constants import REQUEST_ID_HEADER
 from returnright.core.exceptions import (
+    AlreadyDecidedError,
     ConcurrentUpdateError,
     DomainError,
     DuplicateReturnError,
@@ -15,6 +16,7 @@ from returnright.core.exceptions import (
     InvalidReturnRequestError,
     InvalidTransitionError,
     ItemNotEligibleError,
+    LabelUnavailableError,
     NoPendingApprovalError,
     OrderNotFoundError,
     PhotoRejectedError,
@@ -39,6 +41,8 @@ STATUS_BY_ERROR: dict[type[DomainError], int] = {
     InvalidTransitionError: status.HTTP_409_CONFLICT,
     ConcurrentUpdateError: status.HTTP_409_CONFLICT,
     NoPendingApprovalError: status.HTTP_409_CONFLICT,
+    AlreadyDecidedError: status.HTTP_409_CONFLICT,
+    LabelUnavailableError: status.HTTP_409_CONFLICT,
     RefundNotPayableError: status.HTTP_409_CONFLICT,
 }
 
