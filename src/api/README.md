@@ -59,11 +59,15 @@ From the repository root:
 
 ```powershell
 pip install -r requirements-dev.txt
-alembic -c src/api/alembic.ini upgrade head     # DATABASE_URL must point at PostgreSQL (localhost:5434 from the laptop)
+docker compose up -d db                                     # PostgreSQL with every table, localhost:5434
+cd src/api; python -m scripts.seed; cd ../..                # demo data; add --if-empty to keep existing data
+uvicorn mock_gateway.main:app --port 8001 --app-dir src/gateway   # in a second terminal
 uvicorn returnright.main:app --reload --app-dir src/api
-pytest
-ruff check . ; black --check .                  # before every commit
+pytest                                                      # integration tests use the database too
+ruff check . ; black --check .                              # before every commit
 ```
+
+Demo sign-ins after seeding: `warehouse1`, `finance1` and `manager1`, password `DEMO_PASSWORD` (`change-me-demo` unless you set it). The demo orders `ORD-DEMO-01` to `ORD-DEMO-11` belong to `asha.verma@example.com` (01 to 10) and `rohan.mehta@example.com` (11); what each one shows is in `docs/implementation-plan.md` section 7. Set `GATEWAY_DATABASE_URL=postgresql://returnright:change-me@localhost:5434/returnright` for the gateway to keep its payments in the database.
 
 In Docker, `scripts/start.sh` runs the migrations, seeds an empty database and starts the API.
 

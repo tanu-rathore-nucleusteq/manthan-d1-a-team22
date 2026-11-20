@@ -1,6 +1,6 @@
 # ReturnRight API
 
-The ReturnRight API has 27 endpoints under `/api/v1`, for customers, warehouse agents, finance reviewers and operations managers. 3 are implemented; the rest are typed stubs that validate input and return `501` until their story lands.
+The ReturnRight API has 27 endpoints under `/api/v1`, for customers, warehouse agents, finance reviewers and operations managers. 21 are implemented; the rest are typed stubs that validate input and return `501` until their story lands.
 
 Generated from the FastAPI app on 2026-11-20 by `python src/api/scripts/generate_api_docs.py`. Do not edit by hand: change the code, then regenerate. The design behind it is in [api-plan.md](api-plan.md).
 
@@ -54,25 +54,25 @@ A `422` validation body looks like this:
 | --- | --- | --- | --- | --- | --- |
 | 1 | GET | [`/api/v1/health`](#op-get-api-v1-health) | Liveness: the API process is up | Public | Done |
 | 2 | GET | [`/api/v1/health/ready`](#op-get-api-v1-health-ready) | Readiness: PostgreSQL and the payment gateway answer | Public | Done |
-| 3 | POST | [`/api/v1/auth/login`](#op-post-api-v1-auth-login) | Sign in and receive a JWT | Public | Stub |
-| 4 | GET | [`/api/v1/auth/me`](#op-get-api-v1-auth-me) | The signed-in user and role | Any staff role | Stub |
+| 3 | POST | [`/api/v1/auth/login`](#op-post-api-v1-auth-login) | Sign in and receive a JWT | Public | Done |
+| 4 | GET | [`/api/v1/auth/me`](#op-get-api-v1-auth-me) | The signed-in user and role | Any staff role | Done |
 | 5 | POST | [`/api/v1/orders/lookup`](#op-post-api-v1-orders-lookup) | Find an order and explain which items can be returned | Customer (no login) | Done |
-| 6 | POST | [`/api/v1/returns`](#op-post-api-v1-returns) | Request a return for one or more items | Customer (no login) | Stub |
-| 7 | POST | [`/api/v1/returns/{return_code}/photo`](#op-post-api-v1-returns-return-code-photo) | Upload a photo of one returned item (JPEG or PNG, stored locally) | Customer (no login) | Stub |
-| 8 | GET | [`/api/v1/returns/{return_code}`](#op-get-api-v1-returns-return-code) | Return details | Customer (no login) | Stub |
-| 9 | GET | [`/api/v1/returns/{return_code}/timeline`](#op-get-api-v1-returns-return-code-timeline) | Status timeline: Requested → … → Refunded or Rejected | Customer (no login) | Stub |
-| 10 | GET | [`/api/v1/returns/{return_code}/label`](#op-get-api-v1-returns-return-code-label) | Mock return label with a QR code | Customer (no login) | Stub |
-| 11 | POST | [`/api/v1/returns/{return_code}/ship`](#op-post-api-v1-returns-return-code-ship) | Customer confirms the parcel is shipped (Approved → In transit) | Customer (no login) | Stub |
-| 12 | GET | [`/api/v1/warehouse/returns`](#op-get-api-v1-warehouse-returns) | Work queue of returns, filtered by status | Warehouse agent | Stub |
-| 13 | GET | [`/api/v1/warehouse/returns/{return_code}`](#op-get-api-v1-warehouse-returns-return-code) | Find a return by its QR code | Warehouse agent | Stub |
-| 14 | POST | [`/api/v1/warehouse/returns/{return_code}/receive`](#op-post-api-v1-warehouse-returns-return-code-receive) | Mark the parcel received (In transit → Received) | Warehouse agent | Stub |
-| 15 | POST | [`/api/v1/warehouse/returns/{return_code}/inspection`](#op-post-api-v1-warehouse-returns-return-code-inspection) | Grade each item A, B or C and accept or reject it (Received → Inspected) | Warehouse agent | Stub |
-| 16 | GET | [`/api/v1/finance/approvals`](#op-get-api-v1-finance-approvals) | Returns whose refund total is above the approval threshold | Finance reviewer | Stub |
-| 17 | POST | [`/api/v1/finance/approvals/{return_code}/decision`](#op-post-api-v1-finance-approvals-return-code-decision) | Approve or reject a refund above the threshold | Finance reviewer | Stub |
-| 18 | GET | [`/api/v1/finance/refunds`](#op-get-api-v1-finance-refunds) | Refunds by status | Finance reviewer | Stub |
-| 19 | GET | [`/api/v1/finance/refunds/{refund_id}`](#op-get-api-v1-finance-refunds-refund-id) | One refund | Finance reviewer | Stub |
-| 20 | POST | [`/api/v1/finance/refunds/{refund_id}/pay`](#op-post-api-v1-finance-refunds-refund-id-pay) | Pay an approved refund, or retry a failed one, through the gateway (idempotent) | Finance reviewer | Stub |
-| 21 | GET | [`/api/v1/finance/ledger`](#op-get-api-v1-finance-ledger) | Ledger of gateway refunds and store credit | Finance reviewer | Stub |
+| 6 | POST | [`/api/v1/returns`](#op-post-api-v1-returns) | Request a return for one or more items | Customer (no login) | Done |
+| 7 | POST | [`/api/v1/returns/{return_code}/photo`](#op-post-api-v1-returns-return-code-photo) | Upload a photo of one returned item (JPEG or PNG, stored locally) | Customer (no login) | Done |
+| 8 | GET | [`/api/v1/returns/{return_code}`](#op-get-api-v1-returns-return-code) | Return details | Customer (no login) | Done |
+| 9 | GET | [`/api/v1/returns/{return_code}/timeline`](#op-get-api-v1-returns-return-code-timeline) | Status timeline: Requested → … → Refunded or Rejected | Customer (no login) | Done |
+| 10 | GET | [`/api/v1/returns/{return_code}/label`](#op-get-api-v1-returns-return-code-label) | Mock return label with a QR code | Customer (no login) | Done |
+| 11 | POST | [`/api/v1/returns/{return_code}/ship`](#op-post-api-v1-returns-return-code-ship) | Customer confirms the parcel is shipped (Approved → In transit) | Customer (no login) | Done |
+| 12 | GET | [`/api/v1/warehouse/returns`](#op-get-api-v1-warehouse-returns) | Work queue of returns, filtered by status | Warehouse agent | Done |
+| 13 | GET | [`/api/v1/warehouse/returns/{return_code}`](#op-get-api-v1-warehouse-returns-return-code) | Find a return by its QR code | Warehouse agent | Done |
+| 14 | POST | [`/api/v1/warehouse/returns/{return_code}/receive`](#op-post-api-v1-warehouse-returns-return-code-receive) | Mark the parcel received (In transit → Received) | Warehouse agent | Done |
+| 15 | POST | [`/api/v1/warehouse/returns/{return_code}/inspection`](#op-post-api-v1-warehouse-returns-return-code-inspection) | Grade each item A, B or C and accept or reject it (Received → Inspected) | Warehouse agent | Done |
+| 16 | GET | [`/api/v1/finance/approvals`](#op-get-api-v1-finance-approvals) | Returns whose refund total is above the approval threshold | Finance reviewer | Done |
+| 17 | POST | [`/api/v1/finance/approvals/{return_code}/decision`](#op-post-api-v1-finance-approvals-return-code-decision) | Approve or reject a refund above the threshold | Finance reviewer | Done |
+| 18 | GET | [`/api/v1/finance/refunds`](#op-get-api-v1-finance-refunds) | Refunds by status | Finance reviewer | Done |
+| 19 | GET | [`/api/v1/finance/refunds/{refund_id}`](#op-get-api-v1-finance-refunds-refund-id) | One refund | Finance reviewer | Done |
+| 20 | POST | [`/api/v1/finance/refunds/{refund_id}/pay`](#op-post-api-v1-finance-refunds-refund-id-pay) | Pay an approved refund, or retry a failed one, through the gateway (idempotent) | Finance reviewer | Done |
+| 21 | GET | [`/api/v1/finance/ledger`](#op-get-api-v1-finance-ledger) | Ledger of gateway refunds and store credit | Finance reviewer | Done |
 | 22 | GET | [`/api/v1/dashboard`](#op-get-api-v1-dashboard) | All dashboard metrics in one call | Operations manager | Stub |
 | 23 | GET | [`/api/v1/dashboard/return-rates`](#op-get-api-v1-dashboard-return-rates) | Return rate by category | Operations manager | Stub |
 | 24 | GET | [`/api/v1/dashboard/top-reasons`](#op-get-api-v1-dashboard-top-reasons) | Top return reasons | Operations manager | Stub |
@@ -130,7 +130,7 @@ Example response:
 
 Sign in and receive a JWT
 
-**Access:** Public · **Status:** Stub: returns 501
+**Access:** Public · **Status:** Implemented
 
 **Request body:** [`LoginRequest`](#model-loginrequest)
 
@@ -144,8 +144,8 @@ Sign in and receive a JWT
 | Status | Meaning | Body |
 | --- | --- | --- |
 | 200 | Success | [`TokenResponse`](#model-tokenresponse) |
+| 401 | Wrong username or password | [`ErrorResponse`](#model-errorresponse) |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -163,14 +163,13 @@ Example response:
 
 The signed-in user and role
 
-**Access:** Any staff role · **Status:** Stub: returns 501
+**Access:** Any staff role · **Status:** Implemented
 
 | Status | Meaning | Body |
 | --- | --- | --- |
 | 200 | Success | [`UserResponse`](#model-userresponse) |
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -234,7 +233,7 @@ Example response:
 
 Request a return for one or more items
 
-**Access:** Customer (no login) · **Status:** Stub: returns 501
+**Access:** Customer (no login) · **Status:** Implemented
 
 **Request body:** [`CreateReturnRequest`](#model-createreturnrequest)
 
@@ -257,9 +256,9 @@ Request a return for one or more items
 | Status | Meaning | Body |
 | --- | --- | --- |
 | 201 | Success | [`ReturnDetailResponse`](#model-returndetailresponse) |
-| 409 | An item is already in an open return (for example a double submit) | `{"detail": string}` |
-| 422 | An item is not eligible; the reason is in the message | `{"detail": string}` |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
+| 404 | No order matches this number and email | [`ErrorResponse`](#model-errorresponse) |
+| 409 | An item is already in an open return (for example a double submit) | [`ErrorResponse`](#model-errorresponse) |
+| 422 | An item is not eligible; the reason is in the message | [`ErrorResponse`](#model-errorresponse) |
 
 Example response:
 
@@ -299,7 +298,7 @@ Example response:
 
 Upload a photo of one returned item (JPEG or PNG, stored locally)
 
-**Access:** Customer (no login) · **Status:** Stub: returns 501
+**Access:** Customer (no login) · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -310,9 +309,9 @@ Upload a photo of one returned item (JPEG or PNG, stored locally)
 | Status | Meaning | Body |
 | --- | --- | --- |
 | 201 | Success | [`PhotoUploadResponse`](#model-photouploadresponse) |
-| 413 | File larger than UPLOAD_MAX_MB | `{"detail": string}` |
-| 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
+| 404 | No return matches this code and email | [`ErrorResponse`](#model-errorresponse) |
+| 413 | File larger than UPLOAD_MAX_MB | [`ErrorResponse`](#model-errorresponse) |
+| 422 | Not a JPEG or PNG, or too many photos | [`ErrorResponse`](#model-errorresponse) |
 
 Example response:
 
@@ -331,7 +330,7 @@ Example response:
 
 Return details
 
-**Access:** Customer (no login) · **Status:** Stub: returns 501
+**Access:** Customer (no login) · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -341,8 +340,8 @@ Return details
 | Status | Meaning | Body |
 | --- | --- | --- |
 | 200 | Success | [`ReturnDetailResponse`](#model-returndetailresponse) |
+| 404 | No return matches this code and email | [`ErrorResponse`](#model-errorresponse) |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -382,7 +381,7 @@ Example response:
 
 Status timeline: Requested → … → Refunded or Rejected
 
-**Access:** Customer (no login) · **Status:** Stub: returns 501
+**Access:** Customer (no login) · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -392,8 +391,8 @@ Status timeline: Requested → … → Refunded or Rejected
 | Status | Meaning | Body |
 | --- | --- | --- |
 | 200 | Success | list[[`StatusEventResponse`](#model-statuseventresponse)] |
+| 404 | No return matches this code and email | [`ErrorResponse`](#model-errorresponse) |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -412,7 +411,7 @@ Example response:
 
 Mock return label with a QR code
 
-**Access:** Customer (no login) · **Status:** Stub: returns 501
+**Access:** Customer (no login) · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -422,8 +421,9 @@ Mock return label with a QR code
 | Status | Meaning | Body |
 | --- | --- | --- |
 | 200 | Success | [`ReturnLabelResponse`](#model-returnlabelresponse) |
+| 404 | No return matches this code and email | [`ErrorResponse`](#model-errorresponse) |
+| 409 | Return rejected | [`ErrorResponse`](#model-errorresponse) |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -440,7 +440,7 @@ Example response:
 
 Customer confirms the parcel is shipped (Approved → In transit)
 
-**Access:** Customer (no login) · **Status:** Stub: returns 501
+**Access:** Customer (no login) · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -457,9 +457,9 @@ Customer confirms the parcel is shipped (Approved → In transit)
 | Status | Meaning | Body |
 | --- | --- | --- |
 | 200 | Success | [`ReturnDetailResponse`](#model-returndetailresponse) |
-| 409 | The return is not in the Approved state | `{"detail": string}` |
+| 404 | No return matches this code and email | [`ErrorResponse`](#model-errorresponse) |
+| 409 | The return is not in the Approved state | [`ErrorResponse`](#model-errorresponse) |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -501,7 +501,7 @@ Example response:
 
 Work queue of returns, filtered by status
 
-**Access:** Warehouse agent · **Status:** Stub: returns 501
+**Access:** Warehouse agent · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -515,7 +515,6 @@ Work queue of returns, filtered by status
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -544,7 +543,7 @@ Example response:
 
 Find a return by its QR code
 
-**Access:** Warehouse agent · **Status:** Stub: returns 501
+**Access:** Warehouse agent · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -555,8 +554,8 @@ Find a return by its QR code
 | 200 | Success | [`ReturnDetailResponse`](#model-returndetailresponse) |
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
+| 404 | No return has this code | [`ErrorResponse`](#model-errorresponse) |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -596,7 +595,7 @@ Example response:
 
 Mark the parcel received (In transit → Received)
 
-**Access:** Warehouse agent · **Status:** Stub: returns 501
+**Access:** Warehouse agent · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -607,9 +606,9 @@ Mark the parcel received (In transit → Received)
 | 200 | Success | [`ReturnDetailResponse`](#model-returndetailresponse) |
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
-| 409 | The return is not In transit | `{"detail": string}` |
+| 404 | No return has this code | [`ErrorResponse`](#model-errorresponse) |
+| 409 | Already received (code already_received), or not shipped yet | [`ErrorResponse`](#model-errorresponse) |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -649,7 +648,7 @@ Example response:
 
 Grade each item A, B or C and accept or reject it (Received → Inspected)
 
-**Access:** Warehouse agent · **Status:** Stub: returns 501
+**Access:** Warehouse agent · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -675,9 +674,9 @@ Grade each item A, B or C and accept or reject it (Received → Inspected)
 | 200 | Success | [`InspectionResultResponse`](#model-inspectionresultresponse) |
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
-| 409 | The return is not Received | `{"detail": string}` |
-| 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
+| 404 | No return has this code | [`ErrorResponse`](#model-errorresponse) |
+| 409 | Not received yet, or already inspected | [`ErrorResponse`](#model-errorresponse) |
+| 422 | Not every item graded exactly once | [`ErrorResponse`](#model-errorresponse) |
 
 Example response:
 
@@ -711,7 +710,7 @@ Example response:
 
 Returns whose refund total is above the approval threshold
 
-**Access:** Finance reviewer · **Status:** Stub: returns 501
+**Access:** Finance reviewer · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -724,7 +723,6 @@ Returns whose refund total is above the approval threshold
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -751,7 +749,7 @@ Example response:
 
 Approve or reject a refund above the threshold
 
-**Access:** Finance reviewer · **Status:** Stub: returns 501
+**Access:** Finance reviewer · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -771,9 +769,9 @@ Approve or reject a refund above the threshold
 | 200 | Success | [`PendingApprovalResponse`](#model-pendingapprovalresponse) |
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
-| 409 | Already decided | `{"detail": string}` |
+| 404 | No return has this code | [`ErrorResponse`](#model-errorresponse) |
+| 409 | Already decided, or not waiting | [`ErrorResponse`](#model-errorresponse) |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -803,7 +801,7 @@ Example response:
 
 Refunds by status
 
-**Access:** Finance reviewer · **Status:** Stub: returns 501
+**Access:** Finance reviewer · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -817,7 +815,6 @@ Refunds by status
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -847,7 +844,7 @@ Example response:
 
 One refund
 
-**Access:** Finance reviewer · **Status:** Stub: returns 501
+**Access:** Finance reviewer · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -858,8 +855,8 @@ One refund
 | 200 | Success | [`RefundResponse`](#model-refundresponse) |
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
+| 404 | No refund has this id | [`ErrorResponse`](#model-errorresponse) |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -884,7 +881,7 @@ Pay an approved refund, or retry a failed one, through the gateway (idempotent)
 
 Use this to retry a refund whose gateway call failed or timed out. Send the same Idempotency-Key on every retry: the gateway call always uses refund-<return_item_id>, so a refund is never paid twice.
 
-**Access:** Finance reviewer · **Status:** Stub: returns 501
+**Access:** Finance reviewer · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -896,9 +893,9 @@ Use this to retry a refund whose gateway call failed or timed out. Send the same
 | 200 | Success | [`RefundResponse`](#model-refundresponse) |
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
-| 409 | Not approved, or already paid with another key | `{"detail": string}` |
+| 404 | No refund has this id | [`ErrorResponse`](#model-errorresponse) |
+| 409 | Waiting for approval, or rejected | [`ErrorResponse`](#model-errorresponse) |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -921,7 +918,7 @@ Example response:
 
 Ledger of gateway refunds and store credit
 
-**Access:** Finance reviewer · **Status:** Stub: returns 501
+**Access:** Finance reviewer · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -935,7 +932,6 @@ Ledger of gateway refunds and store credit
 | 401 | No or invalid bearer token | `{"detail": string}` |
 | 403 | Signed in with another role | `{"detail": string}` |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 

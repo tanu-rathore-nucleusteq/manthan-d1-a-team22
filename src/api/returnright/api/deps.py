@@ -6,11 +6,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Annotated
 
+import jwt
 from fastapi import Depends, Header, HTTPException, Path, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from returnright.api.not_implemented import not_implemented
 from returnright.core.config import Settings, get_settings
 from returnright.core.constants import (
     CUSTOMER_EMAIL_HEADER,
@@ -18,12 +18,21 @@ from returnright.core.constants import (
     IDEMPOTENCY_KEY_HEADER,
     MAX_PAGE_SIZE,
 )
+from returnright.core.security import decode_access_token
 from returnright.db.session import get_db
 from returnright.domain.enums import Role
 from returnright.dtos.base import EMAIL_PATTERN
 from returnright.dtos.internal.auth import CurrentUser
+from returnright.integrations.payment_gateway import HttpPaymentGateway, http_client
+from returnright.interfaces.payment_gateway import PaymentGateway
 from returnright.repositories.order_repository import OrderRepository
+from returnright.repositories.user_repository import StaffUserRepository
+from returnright.services.approval_service import ApprovalService
+from returnright.services.auth_service import AuthService
+from returnright.services.inspection_service import InspectionService
 from returnright.services.order_service import OrderService
+from returnright.services.refund_service import RefundService
+from returnright.services.return_service import ReturnService
 from returnright.utils.clock import Clock, get_clock
 
 DbSession = Annotated[Session, Depends(get_db)]
@@ -38,7 +47,46 @@ def get_order_service(db: DbSession, clock: AppClock) -> OrderService:
     return OrderService(OrderRepository(db), clock)
 
 
+def get_auth_service(db: DbSession, settings: AppSettings, clock: AppClock) -> AuthService:
+    return AuthService(StaffUserRepository(db), settings, clock)
+
+
+def get_payment_gateway(settings: AppSettings) -> PaymentGateway:
+    client = http_client(settings.gateway_url, settings.gateway_timeout_seconds)
+    return HttpPaymentGateway(client, settings.gateway_max_retries)
+
+
+PaymentGatewayDep = Annotated[PaymentGateway, Depends(get_payment_gateway)]
+
+
+def get_return_service(db: DbSession, settings: AppSettings, clock: AppClock) -> ReturnService:
+    return ReturnService(db, settings, clock)
+
+
+def get_refund_service(db: DbSession, clock: AppClock, gateway: PaymentGatewayDep) -> RefundService:
+    return RefundService(db, gateway, clock)
+
+
+RefundServiceDep = Annotated[RefundService, Depends(get_refund_service)]
+
+
+def get_inspection_service(
+    db: DbSession, settings: AppSettings, clock: AppClock, refunds: RefundServiceDep
+) -> InspectionService:
+    return InspectionService(db, settings, clock, refunds)
+
+
+def get_approval_service(
+    db: DbSession, clock: AppClock, refunds: RefundServiceDep
+) -> ApprovalService:
+    return ApprovalService(db, clock, refunds)
+
+
 OrderServiceDep = Annotated[OrderService, Depends(get_order_service)]
+AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+ReturnServiceDep = Annotated[ReturnService, Depends(get_return_service)]
+InspectionServiceDep = Annotated[InspectionService, Depends(get_inspection_service)]
+ApprovalServiceDep = Annotated[ApprovalService, Depends(get_approval_service)]
 
 # --- Path and header parameters shared by several routers ---------------------------------
 
@@ -91,6 +139,7 @@ bearer_scheme = HTTPBearer(auto_error=False, description="JWT from POST /api/v1/
 
 def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    settings: AppSettings,
 ) -> CurrentUser:
     """Resolve the caller from the bearer token."""
     if credentials is None:
@@ -99,7 +148,14 @@ def get_current_user(
             detail="Sign in first",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    not_implemented("JWT verification")
+    try:
+        return decode_access_token(credentials.credentials, settings)
+    except jwt.InvalidTokenError as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Your session has expired or is not valid. Sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from error
 
 
 def require_role(*roles: Role) -> Callable[..., CurrentUser]:

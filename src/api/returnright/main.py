@@ -4,14 +4,17 @@ exception handlers, CORS and /metrics.
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from returnright.api.exception_handlers import register_exception_handlers
 from returnright.api.v1.router import api_router
 from returnright.core.config import get_settings
 from returnright.db.session import dispose_engine
+from returnright.mappers.return_mapper import UPLOADS_PATH
 
 
 @asynccontextmanager
@@ -36,6 +39,11 @@ def create_app() -> FastAPI:
     )
     app.include_router(api_router)
     register_exception_handlers(app)
+    # Customer photos, served under the API prefix so the web app's /api proxy reaches them.
+    # File names are random, so a URL can't be guessed from another one.
+    upload_dir = Path(settings.upload_dir)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(UPLOADS_PATH, StaticFiles(directory=upload_dir), name="uploads")
     # Still to register as their stories land: request-id middleware, /metrics.
     return app
 

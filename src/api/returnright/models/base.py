@@ -2,8 +2,9 @@
 
 from datetime import datetime
 from decimal import Decimal
+from enum import Enum as PyEnum
 
-from sqlalchemy import DateTime, MetaData, Numeric, func
+from sqlalchemy import DateTime, Enum, MetaData, Numeric, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # Stable constraint names so Alembic migrations are reproducible across machines.
@@ -23,6 +24,11 @@ class Base(DeclarativeBase):
         Decimal: Numeric(12, 2),
         datetime: DateTime(timezone=True),
     }
+
+
+def code_enum(enum_type: type[PyEnum], length: int = 20) -> Enum:
+    """A VARCHAR column holding the enum member name, which is the code db/schema_v2.sql checks."""
+    return Enum(enum_type, native_enum=False, length=length, create_constraint=False)
 
 
 class TimestampMixin:
