@@ -235,14 +235,20 @@ export const httpBackend: ReturnRightBackend = {
   },
 
   async listLedger() {
-    const page = await request<PageResponse<ApiLedgerEntry>>('/finance/ledger', {
-      query: { size: PAGE_SIZE },
-    })
-    const items = page.items.map((entry): LedgerEntryResponse => ({
+    // The ledger screen shows totals, so it needs every entry, not only the first page.
+    const entries: ApiLedgerEntry[] = []
+    for (let page = 1; ; page++) {
+      const result = await request<PageResponse<ApiLedgerEntry>>('/finance/ledger', {
+        query: { size: PAGE_SIZE, page: String(page) },
+      })
+      entries.push(...result.items)
+      if (result.items.length === 0 || entries.length >= result.total) break
+    }
+    const items = entries.map((entry): LedgerEntryResponse => ({
       ...entry,
       entry_type: entry.method === 'original_payment' ? 'gateway_refund' : 'store_credit',
     }))
-    return { ...page, items }
+    return { items, total: items.length, page: 1, size: items.length }
   },
 
   async getDashboard() {
