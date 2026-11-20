@@ -1,7 +1,8 @@
 """Seed synthetic data with Faker seed 42: 2,000 orders, 40 products in 6 categories, 500
-customers, one staff user per role (warehouse1, finance1, manager1; password from DEMO_PASSWORD)
-and the demo orders in docs/implementation-plan.md section 7, dated relative to the day the seed
-runs. --if-empty skips seeding when data exists; without it the script truncates and reloads.
+customers, one staff user per role (warehouse1, finance1, manager1; password from DEMO_PASSWORD),
+the demo orders in docs/implementation-plan.md section 7 and past returns for the dashboard
+(scripts/seed_history.py), all dated relative to the day the seed runs. --if-empty skips seeding
+when data exists; without it the script truncates and reloads.
 
 Run from src/api:  python -m scripts.seed [--if-empty]
 """
@@ -34,6 +35,7 @@ from returnright.models import (
 )
 from returnright.models.audit_log import STATUS_CHANGE
 from returnright.utils.ids import new_return_code
+from scripts.seed_history import add_history
 
 SEED = 42
 CUSTOMERS = 500
@@ -150,10 +152,15 @@ def seed(session: Session) -> None:
     add_staff(session)
     demo_orders = add_demo_orders(session, products, now)
     customers = add_customers(session, fake, rng, CUSTOMERS - 2)
-    add_random_orders(session, rng, customers, list(products.values()), now, ORDERS - demo_orders)
+    orders = add_random_orders(
+        session, rng, customers, list(products.values()), now, ORDERS - demo_orders
+    )
+    names = {category.category_id: category.name for category in session.scalars(select(Category))}
+    category_of = {product.product_id: names[product.category_id] for product in products.values()}
+    history = add_history(session, rng, orders, category_of, now)
     print(
         f"Seeded {len(products)} products, {CUSTOMERS} customers, {ORDERS} orders "
-        f"({demo_orders} demo), {len(STAFF)} staff users."
+        f"({demo_orders} demo), {history} past returns, {len(STAFF)} staff users."
     )
 
 
@@ -304,7 +311,7 @@ def add_random_orders(
     products: list[Product],
     now: datetime,
     count: int,
-) -> None:
+) -> list[Order]:
     orders = []
     for number in range(count):
         ordered_at = now - timedelta(days=rng.uniform(1, 120))
@@ -335,6 +342,7 @@ def add_random_orders(
         )
     session.add_all(orders)
     session.flush()
+    return orders
 
 
 if __name__ == "__main__":
