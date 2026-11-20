@@ -7,6 +7,7 @@ import type {
   ReturnReason,
   ReturnStatus,
   ReturnSummaryResponse,
+  StaffMemberResponse,
 } from '../types'
 import { mockQrSvg } from './qr'
 import {
@@ -119,6 +120,7 @@ function toDetail(ret: MockReturn): ReturnDetailResponse {
         order_item_id: i.order_item_id,
         product_name: i.product_name,
         quantity: i.quantity,
+        unit_price: toMoney(i.unit_price),
         reason: ret.reason,
         reason_details: ret.reason_details,
         photo_urls: photo ? [photo] : [],
@@ -130,6 +132,9 @@ function toDetail(ret: MockReturn): ReturnDetailResponse {
     timeline: [...ret.timeline],
     refund_total: graded ? toMoney(sum(refunds.map((r) => r.amount))) : null,
     created_at: ret.created_at,
+    order_number: ret.order_number,
+    customer_name: customerOf(ret.customer_id).name,
+    customer_flagged: isFlagged(ret.customer_id),
   }
 }
 
@@ -139,6 +144,7 @@ function toSummary(ret: MockReturn): ReturnSummaryResponse {
     return_code: ret.return_code,
     status: ret.status,
     order_number: ret.order_number,
+    customer_name: customerOf(ret.customer_id).name,
     customer_flagged: isFlagged(ret.customer_id),
     item_count: sum(ret.items.map((i) => i.quantity)),
     refund_total: refunds.length ? toMoney(sum(refunds.map((r) => r.amount))) : null,
@@ -163,13 +169,27 @@ function pay(refund: MockRefund, approvedBy: string | null) {
   })
 }
 
+/** Staff accounts, in memory only. The demo users sign in with DEMO_PASSWORD. */
+const staffAccounts: StaffMemberResponse[] = DEMO_STAFF.map((user, index) => ({
+  user_id: index + 1,
+  full_name: user.label,
+  email: `${user.username}@example.com`,
+  username: user.username,
+  role: user.role,
+  is_active: true,
+}))
+const staffPasswords = new Map(staffAccounts.map((user) => [user.user_id, DEMO_PASSWORD]))
+
 // ---- Backend --------------------------------------------------------------------------
 
 export const mockBackend: ReturnRightBackend = {
   async login({ username, password }) {
     await delay()
-    const user = DEMO_STAFF.find((u) => u.username === username.trim().toLowerCase())
-    if (!user || password !== DEMO_PASSWORD) {
+    const login = username.trim().toLowerCase()
+    const user = staffAccounts.find(
+      (u) => u.is_active && (u.username === login || u.email === login),
+    )
+    if (!user || staffPasswords.get(user.user_id) !== password) {
       fail(401, 'invalid_credentials', 'Username or password is incorrect.')
     }
     return {
@@ -489,5 +509,51 @@ export const mockBackend: ReturnRightBackend = {
       flagged_customers,
       generated_at: now(),
     }
+  },
+
+  async listStaff() {
+    await delay()
+    return staffAccounts.map((member) => ({ ...member }))
+  },
+
+  async createStaff({ full_name, email, role, password }) {
+    await delay()
+    const address = email.trim().toLowerCase()
+    const username = address.split('@')[0]
+    if (staffAccounts.some((m) => m.email === address || m.username === username)) {
+      fail(
+        409,
+        'staff_login_taken',
+        'Someone already signs in with this email or with the same name before the @. Use a different email.',
+      )
+    }
+    const member: StaffMemberResponse = {
+      user_id: Math.max(...staffAccounts.map((m) => m.user_id)) + 1,
+      full_name: full_name.trim(),
+      email: address,
+      username,
+      role,
+      is_active: true,
+    }
+    staffAccounts.push(member)
+    staffPasswords.set(member.user_id, password)
+    return { ...member }
+  },
+
+  async updateStaff(staffId, { is_active }) {
+    await delay()
+    const member =
+      staffAccounts.find((m) => m.user_id === staffId) ??
+      fail(404, 'staff_not_found', "We couldn't find that staff member.")
+    // The signed-in demo manager is the seeded "manager" account.
+    if (!is_active && member.username === 'manager') {
+      fail(
+        409,
+        'cannot_deactivate_self',
+        "You can't switch off your own account. Ask another manager.",
+      )
+    }
+    member.is_active = is_active
+    return { ...member }
   },
 }

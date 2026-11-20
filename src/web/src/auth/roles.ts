@@ -36,7 +36,10 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: '/finance', label: 'Approvals', icon: 'shieldCheck', end: true },
     { to: '/finance/ledger', label: 'Ledger', icon: 'receipt' },
   ],
-  operations_manager: [{ to: '/dashboard', label: 'Dashboard', icon: 'dashboard' }],
+  operations_manager: [
+    { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { to: '/team', label: 'Team', icon: 'users' },
+  ],
 }
 
 /** Short workspace name shown above the staff navigation. */

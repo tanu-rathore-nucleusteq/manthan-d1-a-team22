@@ -57,3 +57,7 @@ export type CategoryReturnRateResponse = Schemas['CategoryReturnRateResponse']
 export type ReasonCountResponse = Schemas['ReasonCountResponse']
 export type FlaggedCustomerResponse = Schemas['FlaggedCustomerResponse']
 export type DashboardResponse = Schemas['DashboardResponse']
+
+export type StaffMemberResponse = Schemas['StaffMemberResponse']
+export type CreateStaffRequest = Schemas['CreateStaffRequest']
+export type UpdateStaffRequest = Schemas['UpdateStaffRequest']

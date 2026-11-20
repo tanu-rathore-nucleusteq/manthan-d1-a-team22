@@ -3,6 +3,7 @@ import { mockBackend } from './mock/mockBackend'
 import type {
   ApprovalDecisionRequest,
   CreateReturnRequest,
+  CreateStaffRequest,
   CustomerProofRequest,
   DashboardResponse,
   InspectionRequest,
@@ -16,7 +17,9 @@ import type {
   ReturnDetailResponse,
   ReturnLabelResponse,
   ReturnSummaryResponse,
+  StaffMemberResponse,
   TokenResponse,
+  UpdateStaffRequest,
 } from './types'
 
 /**
@@ -58,6 +61,9 @@ export interface ReturnRightBackend {
 
   // Operations manager
   getDashboard(): Promise<DashboardResponse>
+  listStaff(): Promise<StaffMemberResponse[]>
+  createStaff(body: CreateStaffRequest): Promise<StaffMemberResponse>
+  updateStaff(staffId: number, body: UpdateStaffRequest): Promise<StaffMemberResponse>
 }
 
 /**
@@ -66,7 +72,4 @@ export interface ReturnRightBackend {
  */
 export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true'
 
-// The dashboard endpoint is still a stub on the server, so it keeps using the mock's figures.
-export const backend: ReturnRightBackend = USE_MOCKS
-  ? mockBackend
-  : createHttpBackend(mockBackend.getDashboard)
+export const backend: ReturnRightBackend = USE_MOCKS ? mockBackend : createHttpBackend()
