@@ -11,6 +11,8 @@ A small, separate FastAPI service that stands in for a real payment provider. It
 | `GET /health` | Liveness check |
 | `GET /metrics` | Prometheus metrics: payments by result, idempotent replays, request latency |
 
+Processed keys are stored in the `gateway.payments` table (`GATEWAY_DATABASE_URL`, see `.env.example`). The insert is atomic, so two requests with the same key at the same moment pay once, and a key is still recognised after the gateway restarts. Reusing a key for a different refund or amount returns `409`.
+
 ## Fault switches
 
 Set them in `.env` (see `.env.example`) or change them live with `POST /admin/faults`:

@@ -6,11 +6,18 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from returnright.core.constants import REQUEST_ID_HEADER
-from returnright.core.exceptions import DomainError, OrderNotFoundError
+from returnright.core.exceptions import (
+    DomainError,
+    IdempotencyConflictError,
+    OrderNotFoundError,
+    PaymentGatewayError,
+)
 from returnright.dtos.responses.common import ErrorResponse
 
 STATUS_BY_ERROR: dict[type[DomainError], int] = {
     OrderNotFoundError: status.HTTP_404_NOT_FOUND,
+    IdempotencyConflictError: status.HTTP_409_CONFLICT,
+    PaymentGatewayError: status.HTTP_502_BAD_GATEWAY,
 }
 
 

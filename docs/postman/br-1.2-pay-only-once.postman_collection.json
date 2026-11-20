@@ -1,0 +1,85 @@
+{
+  "info": {
+    "name": "ReturnRight - BR 1.2 Pay only once (mock gateway)",
+    "description": "Checks the mock gateway's POST /payments never pays twice for one Idempotency-Key. Run the requests in order; the first one picks a fresh key for the run.\n\nBefore running: start the database and the gateway on {{gatewayUrl}} (see the PR description).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "gatewayUrl", "value": "http://localhost:8001" },
+    { "key": "key", "value": "" },
+    { "key": "firstTransactionId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. First payment - pays",
+      "event": [
+        { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+          "pm.collectionVariables.set('key', 'refund-pm-' + Date.now());"
+        ] } },
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "const body = pm.response.json();",
+          "pm.test('200 OK', () => pm.response.to.have.status(200));",
+          "pm.test('paid, not a replay', () => {",
+          "  pm.expect(body.status).to.eql('succeeded');",
+          "  pm.expect(body.replayed).to.be.false;",
+          "});",
+          "pm.collectionVariables.set('firstTransactionId', body.transaction_id);"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Idempotency-Key", "value": "{{key}}" }
+        ],
+        "url": "{{gatewayUrl}}/payments",
+        "body": { "mode": "raw", "raw": "{\n  \"refund_id\": 1,\n  \"amount\": \"1499.00\"\n}" }
+      }
+    },
+    {
+      "name": "2. Same key again (double click) - replayed, not paid twice",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "const body = pm.response.json();",
+        "pm.test('200 OK', () => pm.response.to.have.status(200));",
+        "pm.test('replayed', () => pm.expect(body.replayed).to.be.true);",
+        "pm.test('same transaction as the first call', () => pm.expect(body.transaction_id).to.eql(pm.collectionVariables.get('firstTransactionId')));"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Idempotency-Key", "value": "{{key}}" }
+        ],
+        "url": "{{gatewayUrl}}/payments",
+        "body": { "mode": "raw", "raw": "{\n  \"refund_id\": 1,\n  \"amount\": \"1499.00\"\n}" }
+      }
+    },
+    {
+      "name": "3. Same key, different amount - 409",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('409 Conflict', () => pm.response.to.have.status(409));"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Idempotency-Key", "value": "{{key}}" }
+        ],
+        "url": "{{gatewayUrl}}/payments",
+        "body": { "mode": "raw", "raw": "{\n  \"refund_id\": 1,\n  \"amount\": \"9999.00\"\n}" }
+      }
+    },
+    {
+      "name": "4. Missing Idempotency-Key - 422",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{gatewayUrl}}/payments",
+        "body": { "mode": "raw", "raw": "{\n  \"refund_id\": 1,\n  \"amount\": \"1499.00\"\n}" }
+      }
+    }
+  ]
+}
