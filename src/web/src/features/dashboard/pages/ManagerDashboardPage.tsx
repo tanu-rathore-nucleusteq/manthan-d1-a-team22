@@ -45,21 +45,28 @@ export function ManagerDashboardPage() {
       <div className="stats">
         <StatTile
           label="Return rate"
+          icon="trendingUp"
           value={orders ? formatPercent(returns / orders) : '—'}
           hint={`${formatCount(returns)} returns of ${formatCount(orders)} orders`}
         />
         <StatTile
           label="Average cycle time"
+          icon="clock"
+          tone="info"
           value={formatHours(d.average_cycle_time_hours)}
           hint="Request to refund or rejection"
         />
         <StatTile
           label="Top reason"
+          icon="tag"
+          tone="neutral"
           value={d.top_reasons[0] ? REASON_LABEL[d.top_reasons[0].reason] : '—'}
           hint={d.top_reasons[0] ? `${d.top_reasons[0].count} returns` : undefined}
         />
         <StatTile
           label="Flagged customers"
+          icon="flag"
+          tone="warning"
           value={String(d.flagged_customers.length)}
           hint="More than 3 returns in 30 days"
         />
@@ -99,7 +106,7 @@ export function ManagerDashboardPage() {
         flush
       >
         {d.flagged_customers.length === 0 ? (
-          <EmptyState title="No flagged customers" />
+          <EmptyState title="No flagged customers" icon="checkCircle" />
         ) : (
           <div className="table-wrap">
             <table className="table">

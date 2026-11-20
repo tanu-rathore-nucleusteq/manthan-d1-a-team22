@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
+import { Icon } from './Icon'
+
 interface PageHeaderProps {
   title: string
   subtitle?: ReactNode
@@ -14,7 +16,8 @@ export function PageHeader({ title, subtitle, actions, back, meta }: PageHeaderP
     <header className="page-header">
       {back && (
         <Link to={back.to} className="page-header__back">
-          ← {back.label}
+          <Icon name="arrowLeft" size={15} />
+          {back.label}
         </Link>
       )}
       <div className="page-header__row">

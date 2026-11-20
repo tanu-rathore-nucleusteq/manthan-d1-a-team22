@@ -7,9 +7,11 @@ import { Card } from '../../../components/ui/Card'
 import { EmptyState } from '../../../components/ui/EmptyState'
 import { ErrorState } from '../../../components/ui/ErrorState'
 import { TextField } from '../../../components/ui/Field'
+import { Icon } from '../../../components/ui/Icon'
 import { LoadingState } from '../../../components/ui/LoadingState'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { Segmented } from '../../../components/ui/Segmented'
+import { StatTile } from '../../../components/ui/StatTile'
 import { formatRelative } from '../../../lib/format'
 import { useWarehouseQueue } from '../api'
 
@@ -40,7 +42,27 @@ export function WarehouseQueuePage() {
         subtitle="Receive parcels, grade items and decide refunds."
       />
 
-      <Card>
+      <div className="stats">
+        <StatTile
+          label="Waiting for inspection"
+          icon="clipboardCheck"
+          tone="warning"
+          value={received.data ? String(received.data.total) : '…'}
+          hint="Received, not yet graded"
+        />
+        <StatTile
+          label="In transit"
+          icon="truck"
+          tone="info"
+          value={inTransit.data ? String(inTransit.data.total) : '…'}
+          hint="On the way to the warehouse"
+        />
+      </div>
+
+      <Card className="scan-card">
+        <span className="scan-card__icon">
+          <Icon name="scan" size={24} />
+        </span>
         <form
           className="scan-form"
           onSubmit={open}
@@ -60,7 +82,10 @@ export function WarehouseQueuePage() {
               setError(null)
             }}
           />
-          <Button type="submit">Open return</Button>
+          <Button type="submit">
+            Open return
+            <Icon name="arrowRight" size={16} />
+          </Button>
         </form>
       </Card>
 
@@ -85,6 +110,7 @@ export function WarehouseQueuePage() {
         {queue.isError && <ErrorState error={queue.error} onRetry={() => queue.refetch()} />}
         {queue.data && queue.data.items.length === 0 && (
           <EmptyState
+            icon={tab === 'received' ? 'checkCircle' : 'truck'}
             title={tab === 'received' ? 'Nothing waiting for inspection' : 'No parcels in transit'}
           >
             <p>New parcels appear here automatically.</p>

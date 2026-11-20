@@ -1,3 +1,5 @@
+import { Icon } from '../../../components/ui/Icon'
+
 interface StepperProps {
   steps: readonly string[]
   current: number
@@ -13,7 +15,7 @@ export function Stepper({ steps, current, onSelect }: StepperProps) {
         const content = (
           <>
             <span className="stepper__index" aria-hidden="true">
-              {state === 'done' ? '✓' : i + 1}
+              {state === 'done' ? <Icon name="check" size={14} strokeWidth={3} /> : i + 1}
             </span>
             <span className="stepper__label">{label}</span>
             {state === 'done' && <span className="visually-hidden"> (completed)</span>}

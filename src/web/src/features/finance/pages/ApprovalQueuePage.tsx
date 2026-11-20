@@ -26,10 +26,21 @@ export function ApprovalQueuePage() {
       />
 
       <div className="stats">
-        <StatTile label="Waiting for approval" value={pending.data ? String(rows.length) : '…'} />
-        <StatTile label="Amount waiting" value={pending.data ? formatInr(totalWaiting) : '…'} />
+        <StatTile
+          label="Waiting for approval"
+          icon="inbox"
+          tone="warning"
+          value={pending.data ? String(rows.length) : '…'}
+        />
+        <StatTile
+          label="Amount waiting"
+          icon="wallet"
+          value={pending.data ? formatInr(totalWaiting) : '…'}
+        />
         <StatTile
           label="Flagged customers"
+          icon="flag"
+          tone="danger"
           value={pending.data ? String(rows.filter((r) => r.customer_flagged).length) : '…'}
           hint="More than 3 returns in 30 days"
         />
@@ -39,7 +50,7 @@ export function ApprovalQueuePage() {
         {pending.isPending && <LoadingState lines={4} />}
         {pending.isError && <ErrorState error={pending.error} onRetry={() => pending.refetch()} />}
         {pending.data && rows.length === 0 && (
-          <EmptyState title="All caught up">
+          <EmptyState title="All caught up" icon="checkCircle">
             <p>No refunds are waiting for approval.</p>
           </EmptyState>
         )}

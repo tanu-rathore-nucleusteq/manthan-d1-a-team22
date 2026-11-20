@@ -8,6 +8,7 @@ import { Alert } from '../../../components/ui/Alert'
 import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { TextField } from '../../../components/ui/Field'
+import { Icon } from '../../../components/ui/Icon'
 import { returnKeys } from '../api'
 import { saveProof } from '../customerProof'
 
@@ -45,11 +46,13 @@ export function TrackReturnPage() {
   }
 
   return (
-    <div className="narrow">
-      <p className="eyebrow">Returns and refunds</p>
-      <h1 className="display">Track a return</h1>
+    <div className="narrow narrow--centered">
+      <span className="hero-icon">
+        <Icon name="truck" size={26} />
+      </span>
+      <h1 className="display display--sm">Track a return</h1>
       <p className="lead">Enter your return code and the email you ordered with.</p>
-      <Card>
+      <Card className="card--raised">
         <form className="stack" onSubmit={submit} noValidate aria-label="Track a return">
           {track.isError && (
             <Alert tone="danger" title="Return not found">
@@ -72,11 +75,10 @@ export function TrackReturnPage() {
             error={errors.email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <div>
-            <Button type="submit" loading={track.isPending}>
-              Track return
-            </Button>
-          </div>
+          <Button type="submit" block loading={track.isPending}>
+            {!track.isPending && <Icon name="search" size={16} />}
+            Track return
+          </Button>
         </form>
       </Card>
       {USE_MOCKS && (

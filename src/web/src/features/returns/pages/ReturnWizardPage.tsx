@@ -9,6 +9,7 @@ import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { ErrorState } from '../../../components/ui/ErrorState'
 import { TextAreaField } from '../../../components/ui/Field'
+import { Icon } from '../../../components/ui/Icon'
 import { LoadingState } from '../../../components/ui/LoadingState'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { formatDate, formatInr } from '../../../lib/format'
@@ -223,8 +224,8 @@ function Wizard({ orderNumber, deliveredOn, items, email }: WizardProps) {
               {previewUrl ? (
                 <img src={previewUrl} alt="Selected item" className="dropzone__preview" />
               ) : (
-                <span className="dropzone__icon" aria-hidden="true">
-                  ⇪
+                <span className="dropzone__icon">
+                  <Icon name="upload" size={26} />
                 </span>
               )}
               <span className="dropzone__text">

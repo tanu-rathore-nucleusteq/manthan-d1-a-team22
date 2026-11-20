@@ -34,16 +34,29 @@ export function LedgerPage() {
       />
 
       <div className="stats">
-        <StatTile label="Total refunded" value={ledger.data ? formatInr(total()) : '…'} />
+        <StatTile
+          label="Total refunded"
+          icon="receipt"
+          value={ledger.data ? formatInr(total()) : '…'}
+        />
         <StatTile
           label="Through the gateway"
+          icon="wallet"
+          tone="info"
           value={ledger.data ? formatInr(total('gateway_refund')) : '…'}
         />
         <StatTile
           label="As store credit"
+          icon="tag"
+          tone="success"
           value={ledger.data ? formatInr(total('store_credit')) : '…'}
         />
-        <StatTile label="Entries" value={ledger.data ? String(entries.length) : '…'} />
+        <StatTile
+          label="Entries"
+          icon="database"
+          tone="neutral"
+          value={ledger.data ? String(entries.length) : '…'}
+        />
       </div>
 
       <Card
@@ -67,7 +80,9 @@ export function LedgerPage() {
       >
         {ledger.isPending && <LoadingState lines={5} />}
         {ledger.isError && <ErrorState error={ledger.error} onRetry={() => ledger.refetch()} />}
-        {ledger.data && shown.length === 0 && <EmptyState title="No ledger entries" />}
+        {ledger.data && shown.length === 0 && (
+          <EmptyState title="No ledger entries" icon="receipt" />
+        )}
         {shown.length > 0 && (
           <div className="table-wrap">
             <table className="table">
