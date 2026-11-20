@@ -1,0 +1,115 @@
+{
+  "info": {
+    "name": "ReturnRight - BR 1.2 Return window (30 days)",
+    "description": "Checks POST /api/v1/orders/lookup against the 30-day return window.\n\nBefore running: load tests/api/fixtures/br_1_2_return_window_sample.sql into the database and start the API on {{baseUrl}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "email", "value": "br12.tester@example.com" }
+  ],
+  "item": [
+    {
+      "name": "Day 5 - returnable",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "const body = pm.response.json();",
+        "pm.test('200 OK', () => pm.response.to.have.status(200));",
+        "pm.test('every item is eligible', () => body.items.forEach(i => pm.expect(i.eligible).to.be.true));",
+        "pm.test('reason names the last day', () => pm.expect(body.items[0].reason).to.include('You can return this item until'));",
+        "pm.test('window ends 30 days after delivery', () => {",
+        "  const end = new Date(body.delivered_on); end.setUTCDate(end.getUTCDate() + 30);",
+        "  pm.expect(body.items[0].window_ends_on).to.eql(end.toISOString().slice(0, 10));",
+        "});"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/orders/lookup",
+        "body": { "mode": "raw", "raw": "{\n  \"order_number\": \"BR12-DAY05\",\n  \"email\": \"{{email}}\"\n}" }
+      }
+    },
+    {
+      "name": "Day 30 - last returnable day",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "const body = pm.response.json();",
+        "pm.test('200 OK', () => pm.response.to.have.status(200));",
+        "pm.test('every item is eligible on day 30', () => body.items.forEach(i => pm.expect(i.eligible).to.be.true));",
+        "pm.test('reason says delivered 30 days ago', () => pm.expect(body.items[0].reason).to.include('30 days ago'));"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/orders/lookup",
+        "body": { "mode": "raw", "raw": "{\n  \"order_number\": \"BR12-DAY30\",\n  \"email\": \"{{email}}\"\n}" }
+      }
+    },
+    {
+      "name": "Day 31 - not returnable",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "const body = pm.response.json();",
+        "pm.test('200 OK', () => pm.response.to.have.status(200));",
+        "pm.test('no item is eligible on day 31', () => body.items.forEach(i => pm.expect(i.eligible).to.be.false));",
+        "pm.test('reason explains the window ended', () => pm.expect(body.items[0].reason).to.include('The 30-day return window ended on'));"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/orders/lookup",
+        "body": { "mode": "raw", "raw": "{\n  \"order_number\": \"BR12-DAY31\",\n  \"email\": \"{{email}}\"\n}" }
+      }
+    },
+    {
+      "name": "Not delivered - not returnable",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "const body = pm.response.json();",
+        "pm.test('200 OK', () => pm.response.to.have.status(200));",
+        "pm.test('delivered_on is null', () => pm.expect(body.delivered_on).to.be.null);",
+        "pm.test('no item is eligible', () => body.items.forEach(i => pm.expect(i.eligible).to.be.false));",
+        "pm.test('reason says not delivered', () => pm.expect(body.items[0].reason).to.include('not been delivered'));"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/orders/lookup",
+        "body": { "mode": "raw", "raw": "{\n  \"order_number\": \"BR12-NOTDLV\",\n  \"email\": \"{{email}}\"\n}" }
+      }
+    },
+    {
+      "name": "Email in different case - still found",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('200 OK', () => pm.response.to.have.status(200));"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/orders/lookup",
+        "body": { "mode": "raw", "raw": "{\n  \"order_number\": \"BR12-DAY05\",\n  \"email\": \"BR12.Tester@Example.com\"\n}" }
+      }
+    },
+    {
+      "name": "Wrong email - 404",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+        "pm.test('error code is order_not_found', () => pm.expect(pm.response.json().code).to.eql('order_not_found'));"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/orders/lookup",
+        "body": { "mode": "raw", "raw": "{\n  \"order_number\": \"BR12-DAY05\",\n  \"email\": \"someone.else@example.com\"\n}" }
+      }
+    },
+    {
+      "name": "Invalid email - 422",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/orders/lookup",
+        "body": { "mode": "raw", "raw": "{\n  \"order_number\": \"BR12-DAY05\",\n  \"email\": \"not-an-email\"\n}" }
+      }
+    }
+  ]
+}

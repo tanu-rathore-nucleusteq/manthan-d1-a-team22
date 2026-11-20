@@ -3,12 +3,14 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from returnright.api.deps import get_current_user
+from returnright.api.deps import get_current_user, get_order_service
 from returnright.api.v1.endpoints import health
 from returnright.db.session import get_db
 from returnright.domain.enums import Role
 from returnright.dtos.internal.auth import CurrentUser
 from returnright.main import app
+from returnright.services.order_service import OrderService
+from returnright.utils.clock import SystemClock
 
 client = TestClient(app)
 
@@ -53,11 +55,19 @@ def test_every_planned_route_is_in_the_openapi_schema():
     assert len(published) == 27
 
 
-def test_order_lookup_with_valid_input_is_not_implemented_yet():
-    response = client.post(
-        "/api/v1/orders/lookup", json={"order_number": "ORD-1001", "email": "asha@example.com"}
-    )
-    assert response.status_code == 501
+def test_order_lookup_is_implemented():
+    class NoOrders:
+        def find_by_number_and_email(self, *_args):
+            return None
+
+    app.dependency_overrides[get_order_service] = lambda: OrderService(NoOrders(), SystemClock())
+    try:
+        response = client.post(
+            "/api/v1/orders/lookup", json={"order_number": "ORD-1001", "email": "asha@example.com"}
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 404
 
 
 def test_order_lookup_with_bad_email_is_rejected():

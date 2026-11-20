@@ -27,6 +27,7 @@ DOCS_DIR = REPO_ROOT / "docs"
 IMPLEMENTED = {
     ("GET", "/api/v1/health"),
     ("GET", "/api/v1/health/ready"),
+    ("POST", "/api/v1/orders/lookup"),
 }
 
 TAG_ORDER = [
