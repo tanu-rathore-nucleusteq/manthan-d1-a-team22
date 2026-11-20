@@ -1,0 +1,29 @@
+# ReturnRight local stack. For now only the database: PostgreSQL 18, which creates every table
+# from docs/db/schema_v2.sql on first start. The API, gateway and web services join this file later.
+# Start: docker compose up -d db   (guide: docs/db/README.md)
+name: returnright
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: returnright
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: returnright
+    # Tables live in schema "returnright"; making it the default search path means the app and
+    # psql need no extra options.
+    command: ["postgres", "-c", "search_path=returnright,public"]
+    ports:
+      - "${DB_PORT:-5434}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql
+      - ./docs/db/schema_v2.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U returnright -d returnright"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  db-data:
