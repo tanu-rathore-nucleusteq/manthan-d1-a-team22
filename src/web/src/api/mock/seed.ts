@@ -75,6 +75,8 @@ export interface MockLedgerEntry {
   entry_id: number
   refund_id: number
   entry_type: LedgerEntryType
+  method: RefundMethod
+  gateway_transaction_id: string | null
   amount: number
   created_at: string
 }
@@ -240,11 +242,12 @@ export const CATEGORY_ORDERS: Record<string, { orders: number; returns: number }
 }
 
 export const REASON_BASELINE: Record<ReturnReason, number> = {
-  size_or_fit: 58,
+  size: 58,
   damaged: 39,
   not_as_described: 31,
   wrong_item: 22,
-  no_longer_needed: 17,
+  changed_mind: 17,
+  quality: 9,
   other: 6,
 }
 
@@ -284,7 +287,7 @@ const SEED_RETURNS: SeedReturn[] = [
     customer: 12,
     status: 'in_transit',
     ageHours: 50,
-    reason: 'size_or_fit',
+    reason: 'size',
     method: 'store_credit',
     items: [
       { name: 'Denim jacket', category: 'Apparel', price: 2799 },
@@ -361,7 +364,7 @@ const SEED_RETURNS: SeedReturn[] = [
     customer: 17,
     status: 'refunded',
     ageHours: 290,
-    reason: 'size_or_fit',
+    reason: 'size',
     method: 'store_credit',
     items: [
       { name: 'Printed kurta', category: 'Apparel', price: 1299, grade: 'A', decision: 'accept' },
@@ -372,7 +375,7 @@ const SEED_RETURNS: SeedReturn[] = [
     customer: 17,
     status: 'refunded',
     ageHours: 480,
-    reason: 'size_or_fit',
+    reason: 'size',
     method: 'original_payment',
     items: [
       { name: 'Palazzo pants', category: 'Apparel', price: 999, grade: 'B', decision: 'accept' },
@@ -383,7 +386,7 @@ const SEED_RETURNS: SeedReturn[] = [
     customer: 17,
     status: 'approved',
     ageHours: 190,
-    reason: 'no_longer_needed',
+    reason: 'changed_mind',
     method: 'store_credit',
     items: [{ name: 'Cotton top', category: 'Apparel', price: 799 }],
   },
@@ -409,7 +412,7 @@ const SEED_RETURNS: SeedReturn[] = [
     customer: 19,
     status: 'rejected',
     ageHours: 168,
-    reason: 'no_longer_needed',
+    reason: 'changed_mind',
     method: 'original_payment',
     items: [
       {
@@ -532,7 +535,9 @@ export function createSeedState(): MockState {
         state.ledger.push({
           entry_id: state.next.entryId++,
           refund_id: refund.refund_id,
-          entry_type: seed.method === 'original_payment' ? 'gateway_refund' : 'store_credit',
+          entry_type: 'refund',
+          method: refund.method,
+          gateway_transaction_id: refund.gateway_transaction_id,
           amount: refund.amount,
           created_at: ret.updated_at,
         })

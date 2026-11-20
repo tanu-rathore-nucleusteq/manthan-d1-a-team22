@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 
-import { StatusBadge } from '../../../components/ui/Badge'
+import { Badge, StatusBadge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { EmptyState } from '../../../components/ui/EmptyState'
@@ -13,6 +13,7 @@ import { PageHeader } from '../../../components/ui/PageHeader'
 import { Segmented } from '../../../components/ui/Segmented'
 import { StatTile } from '../../../components/ui/StatTile'
 import { formatRelative } from '../../../lib/format'
+import { isReturnCode, RETURN_CODE_EXAMPLE } from '../../../lib/returnCode'
 import { useWarehouseQueue } from '../api'
 
 type QueueStatus = 'in_transit' | 'received'
@@ -30,8 +31,8 @@ export function WarehouseQueuePage() {
   const open = (e: FormEvent) => {
     e.preventDefault()
     const value = code.trim().toUpperCase()
-    if (!/^RET-\d{3,}$/.test(value))
-      return setError('Scan the label or type a code like RET-24054.')
+    if (!isReturnCode(value))
+      return setError(`Scan the label or type a code like ${RETURN_CODE_EXAMPLE}.`)
     navigate(`/warehouse/returns/${value}`)
   }
 
@@ -72,7 +73,7 @@ export function WarehouseQueuePage() {
           <TextField
             label="Scan or enter return code"
             className="scan-form__field"
-            placeholder="RET-24054"
+            placeholder={RETURN_CODE_EXAMPLE}
             autoFocus
             autoComplete="off"
             value={code}
@@ -127,7 +128,7 @@ export function WarehouseQueuePage() {
               <thead>
                 <tr>
                   <th scope="col">Return</th>
-                  <th scope="col">Customer</th>
+                  <th scope="col">Order</th>
                   <th scope="col" className="num">
                     Items
                   </th>
@@ -146,7 +147,10 @@ export function WarehouseQueuePage() {
                         {r.return_code}
                       </Link>
                     </td>
-                    <td>{r.customer_name}</td>
+                    <td>
+                      <span className="mono">{r.order_number}</span>{' '}
+                      {r.customer_flagged && <Badge tone="warning">Flagged</Badge>}
+                    </td>
                     <td className="num">{r.item_count}</td>
                     <td>
                       <StatusBadge status={r.status} />

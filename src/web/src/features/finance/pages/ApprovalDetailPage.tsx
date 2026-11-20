@@ -32,12 +32,14 @@ export function ApprovalDetailPage() {
 
   if (detail.isPending || pending.isPending)
     return <LoadingState label="Loading refund" lines={6} />
-  if (detail.isError) return <ErrorState error={detail.error} onRetry={() => detail.refetch()} />
   if (pending.isError) return <ErrorState error={pending.error} onRetry={() => pending.refetch()} />
 
+  // Item names, grades and photos come from the return detail. If it fails to load,
+  // the approval itself still holds everything needed to decide.
+  const info = detail.data
   const approval = pending.data.find((p) => p.return_code === code)
   const itemName = (id: number) =>
-    detail.data.items.find((i) => i.return_item_id === id)?.product_name ?? `Item ${id}`
+    info?.items.find((i) => i.return_item_id === id)?.product_name ?? `Item #${id}`
 
   const confirm = () => {
     const approve = dialog === 'approve'
@@ -65,7 +67,7 @@ export function ApprovalDetailPage() {
             ? `Refund of ${formatInr(approval.refund_total)} waiting for approval`
             : 'No refund waiting for approval'
         }
-        meta={<StatusBadge status={detail.data.status} />}
+        meta={info && <StatusBadge status={info.status} />}
         back={{ to: '/finance', label: 'Refund approvals' }}
         actions={
           approval && (
@@ -146,12 +148,21 @@ export function ApprovalDetailPage() {
             </Alert>
           )}
 
-          <Card title="Inspection" flush>
-            <GradedItemsTable items={detail.data.items} total={detail.data.refund_total} />
-          </Card>
+          {info && (
+            <Card title="Inspection" flush>
+              <GradedItemsTable items={info.items} total={info.refund_total} />
+            </Card>
+          )}
         </div>
 
-        <ReturnFacts detail={detail.data} />
+        {info ? (
+          <ReturnFacts detail={info} />
+        ) : (
+          <Alert tone="neutral" title="Item details not available">
+            Product names, grades and photos couldn't be loaded. Try reloading the page; the refund
+            amounts above are final.
+          </Alert>
+        )}
       </div>
 
       <ConfirmDialog

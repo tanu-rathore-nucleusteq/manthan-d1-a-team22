@@ -1,3 +1,4 @@
+import { createHttpBackend } from './httpBackend'
 import { mockBackend } from './mock/mockBackend'
 import type {
   ApprovalDecisionRequest,
@@ -29,7 +30,12 @@ export interface ReturnRightBackend {
   // Customer
   lookupOrder(body: OrderLookupRequest): Promise<OrderLookupResponse>
   createReturn(body: CreateReturnRequest): Promise<ReturnDetailResponse>
-  uploadReturnPhoto(returnCode: string, email: string, photo: File): Promise<void>
+  uploadReturnPhoto(
+    returnCode: string,
+    email: string,
+    returnItemId: number,
+    photo: File,
+  ): Promise<void>
   getReturn(returnCode: string, proof: CustomerProofRequest): Promise<ReturnDetailResponse>
   getLabel(returnCode: string, proof: CustomerProofRequest): Promise<ReturnLabelResponse>
   markShipped(returnCode: string, proof: CustomerProofRequest): Promise<ReturnDetailResponse>
@@ -44,15 +50,23 @@ export interface ReturnRightBackend {
 
   // Finance reviewer
   listPendingApprovals(): Promise<PendingApprovalResponse[]>
-  decideApproval(returnCode: string, body: ApprovalDecisionRequest): Promise<ReturnDetailResponse>
+  decideApproval(
+    returnCode: string,
+    body: ApprovalDecisionRequest,
+  ): Promise<PendingApprovalResponse>
   listLedger(): Promise<PageResponse<LedgerEntryResponse>>
 
   // Operations manager
   getDashboard(): Promise<DashboardResponse>
 }
 
-/** True until the API is ready. Set VITE_USE_MOCKS=false to call the real API. */
-export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false'
+/**
+ * Demo mode: every call is served in the browser by the mock backend, with synthetic data.
+ * Off by default now that the API is live; set VITE_USE_MOCKS=true to demo without it.
+ */
+export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true'
 
-// The HTTP implementation is added when the API document arrives; until then the mock serves every call.
-export const backend: ReturnRightBackend = mockBackend
+// The dashboard endpoint is still a stub on the server, so it keeps using the mock's figures.
+export const backend: ReturnRightBackend = USE_MOCKS
+  ? mockBackend
+  : createHttpBackend(mockBackend.getDashboard)

@@ -9,6 +9,7 @@ import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { TextField } from '../../../components/ui/Field'
 import { Icon } from '../../../components/ui/Icon'
+import { isReturnCode, RETURN_CODE_EXAMPLE } from '../../../lib/returnCode'
 import { returnKeys } from '../api'
 import { saveProof } from '../customerProof'
 
@@ -34,9 +35,9 @@ export function TrackReturnPage() {
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const next = {
-      code: /^RET-\d{3,}$/i.test(code.trim())
+      code: isReturnCode(code)
         ? undefined
-        : 'Enter the return code from your label, e.g. RET-24051.',
+        : `Enter the return code from your label, e.g. ${RETURN_CODE_EXAMPLE}.`,
       email: EMAIL.test(email.trim()) ? undefined : 'Enter a valid email address.',
     }
     setErrors(next)
@@ -61,7 +62,7 @@ export function TrackReturnPage() {
           )}
           <TextField
             label="Return code"
-            placeholder="RET-24051"
+            placeholder={RETURN_CODE_EXAMPLE}
             autoComplete="off"
             value={code}
             error={errors.code}

@@ -18,7 +18,7 @@ import { ErrorState } from '../../../components/ui/ErrorState'
 import { LoadingState } from '../../../components/ui/LoadingState'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { Segmented } from '../../../components/ui/Segmented'
-import { formatInr } from '../../../lib/format'
+import { formatDateTime, formatInr } from '../../../lib/format'
 import { ReturnFacts } from '../../staff/ReturnFacts'
 import { GradedItemsTable } from '../../staff/GradedItemsTable'
 import { useInspectReturn, useMarkReceived } from '../api'
@@ -32,7 +32,6 @@ const DECISIONS: { value: ItemDecision; label: string }[] = [
   { value: 'accept', label: 'Accept' },
   { value: 'reject', label: 'Reject' },
 ]
-const APPROVAL_THRESHOLD = 10_000
 
 export function InspectionPage() {
   const { returnCode = '' } = useParams()
@@ -69,7 +68,7 @@ function Inspection({ detail }: { detail: ReturnDetailResponse }) {
     <>
       <PageHeader
         title={code}
-        subtitle={`${detail.customer_name ?? 'Customer'} · order ${detail.order_number ?? '—'}`}
+        subtitle={`${detail.items.length} item${detail.items.length === 1 ? '' : 's'} · requested ${formatDateTime(detail.created_at)}`}
         meta={<StatusBadge status={detail.status} />}
         back={{ to: '/warehouse', label: 'Inspection queue' }}
       />
@@ -170,17 +169,16 @@ function InspectionForm({
   const update = (id: number, patch: Partial<ItemState>) =>
     setState((s) => ({ ...s, [id]: { ...s[id], ...patch } }))
 
-  const preview = (id: number) => {
-    const item = detail.items.find((i) => i.return_item_id === id)!
+  // The API sets the amounts; before submitting, show the share of the price each item earns.
+  const share = (id: number) => {
     const { grade, decision } = state[id]
-    if (!grade || !decision || !item.unit_price) return null
-    if (decision === 'reject') return 0
-    return Number(item.unit_price) * item.quantity * (grade === 'C' ? 0.5 : 1)
+    if (!grade || !decision) return null
+    if (decision === 'reject') return 'No refund'
+    return grade === 'C' ? '50% refund' : 'Full refund'
   }
 
-  const previews = detail.items.map((i) => preview(i.return_item_id))
-  const complete = previews.every((p) => p !== null)
-  const total = previews.reduce<number>((sum, p) => sum + (p ?? 0), 0)
+  const shares = detail.items.map((i) => share(i.return_item_id))
+  const complete = shares.every((p) => p !== null)
 
   const submit = () => {
     setShowErrors(true)
@@ -227,15 +225,9 @@ function InspectionForm({
               <div className="inspect-item__head">
                 <div>
                   <span className="inspect-item__name">{item.product_name}</span>
-                  <span className="muted">
-                    {' '}
-                    × {item.quantity}
-                    {item.unit_price && ` · ${formatInr(item.unit_price)} each`}
-                  </span>
+                  <span className="muted"> × {item.quantity}</span>
                 </div>
-                <span className="inspect-item__refund">
-                  {previews[index] === null ? '—' : formatInr(previews[index])}
-                </span>
+                <span className="inspect-item__refund">{shares[index] ?? '—'}</span>
               </div>
               <div className="inspect-item__controls">
                 <Segmented
@@ -270,15 +262,10 @@ function InspectionForm({
         })}
       </ul>
 
-      <div className="summary-total">
-        <span>Refund total</span>
-        <strong>{complete ? formatInr(total) : '—'}</strong>
-      </div>
-      {complete && total > APPROVAL_THRESHOLD && (
-        <Alert tone="warning" title="Needs finance approval">
-          Refunds above ₹10,000 go to a finance reviewer before they are paid.
-        </Alert>
-      )}
+      <p className="muted">
+        The refund total is calculated when you submit. Refunds above ₹10,000 go to a finance
+        reviewer before they are paid.
+      </p>
       {error && (
         <Alert tone="danger" title="Inspection not saved">
           {error}
