@@ -6,15 +6,16 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
-from returnright.api.deps import DbSession, Pagination, ReturnCode, WarehouseAgent
-from returnright.api.not_implemented import not_implemented
+from returnright.api.deps import InspectionServiceDep, Pagination, ReturnCode, WarehouseAgent
 from returnright.domain.enums import ReturnStatus
 from returnright.dtos.requests.warehouse import InspectionRequest
-from returnright.dtos.responses.common import PageResponse
+from returnright.dtos.responses.common import ErrorResponse, PageResponse
 from returnright.dtos.responses.returns import ReturnDetailResponse, ReturnSummaryResponse
 from returnright.dtos.responses.warehouse import InspectionResultResponse
 
 router = APIRouter(prefix="/warehouse", tags=["warehouse"])
+
+NOT_FOUND = {404: {"model": ErrorResponse, "description": "No return has this code"}}
 
 
 @router.get(
@@ -24,43 +25,57 @@ router = APIRouter(prefix="/warehouse", tags=["warehouse"])
 )
 def list_returns(
     user: WarehouseAgent,
-    db: DbSession,
+    service: InspectionServiceDep,
     page: Pagination,
     status: Annotated[ReturnStatus | None, Query()] = ReturnStatus.IN_TRANSIT,
 ) -> PageResponse[ReturnSummaryResponse]:
-    not_implemented("Warehouse queue")
+    return service.queue(status, page.page, page.size)
 
 
 @router.get(
     "/returns/{return_code}",
     response_model=ReturnDetailResponse,
     summary="Find a return by its QR code",
+    responses=NOT_FOUND,
 )
 def get_return(
-    return_code: ReturnCode, user: WarehouseAgent, db: DbSession
+    return_code: ReturnCode, user: WarehouseAgent, service: InspectionServiceDep
 ) -> ReturnDetailResponse:
-    not_implemented("Warehouse return lookup")
+    return service.detail(return_code)
 
 
 @router.post(
     "/returns/{return_code}/receive",
     response_model=ReturnDetailResponse,
     summary="Mark the parcel received (In transit → Received)",
-    responses={409: {"description": "The return is not In transit"}},
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "Already received (code already_received), or not shipped yet",
+        },
+    },
 )
 def receive_return(
-    return_code: ReturnCode, user: WarehouseAgent, db: DbSession
+    return_code: ReturnCode, user: WarehouseAgent, service: InspectionServiceDep
 ) -> ReturnDetailResponse:
-    not_implemented("Receive return")
+    return service.receive(return_code, user)
 
 
 @router.post(
     "/returns/{return_code}/inspection",
     response_model=InspectionResultResponse,
     summary="Grade each item A, B or C and accept or reject it (Received → Inspected)",
-    responses={409: {"description": "The return is not Received"}},
+    responses={
+        **NOT_FOUND,
+        409: {"model": ErrorResponse, "description": "Not received yet, or already inspected"},
+        422: {"model": ErrorResponse, "description": "Not every item graded exactly once"},
+    },
 )
 def inspect_return(
-    return_code: ReturnCode, payload: InspectionRequest, user: WarehouseAgent, db: DbSession
+    return_code: ReturnCode,
+    payload: InspectionRequest,
+    user: WarehouseAgent,
+    service: InspectionServiceDep,
 ) -> InspectionResultResponse:
-    not_implemented("Inspection")
+    return service.inspect(return_code, user, payload)
