@@ -6,11 +6,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Annotated
 
+import jwt
 from fastapi import Depends, Header, HTTPException, Path, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from returnright.api.not_implemented import not_implemented
 from returnright.core.config import Settings, get_settings
 from returnright.core.constants import (
     CUSTOMER_EMAIL_HEADER,
@@ -18,11 +18,14 @@ from returnright.core.constants import (
     IDEMPOTENCY_KEY_HEADER,
     MAX_PAGE_SIZE,
 )
+from returnright.core.security import decode_access_token
 from returnright.db.session import get_db
 from returnright.domain.enums import Role
 from returnright.dtos.base import EMAIL_PATTERN
 from returnright.dtos.internal.auth import CurrentUser
 from returnright.repositories.order_repository import OrderRepository
+from returnright.repositories.user_repository import StaffUserRepository
+from returnright.services.auth_service import AuthService
 from returnright.services.order_service import OrderService
 from returnright.utils.clock import Clock, get_clock
 
@@ -38,7 +41,12 @@ def get_order_service(db: DbSession, clock: AppClock) -> OrderService:
     return OrderService(OrderRepository(db), clock)
 
 
+def get_auth_service(db: DbSession, settings: AppSettings, clock: AppClock) -> AuthService:
+    return AuthService(StaffUserRepository(db), settings, clock)
+
+
 OrderServiceDep = Annotated[OrderService, Depends(get_order_service)]
+AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 # --- Path and header parameters shared by several routers ---------------------------------
 
@@ -91,6 +99,7 @@ bearer_scheme = HTTPBearer(auto_error=False, description="JWT from POST /api/v1/
 
 def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    settings: AppSettings,
 ) -> CurrentUser:
     """Resolve the caller from the bearer token."""
     if credentials is None:
@@ -99,7 +108,14 @@ def get_current_user(
             detail="Sign in first",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    not_implemented("JWT verification")
+    try:
+        return decode_access_token(credentials.credentials, settings)
+    except jwt.InvalidTokenError as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Your session has expired or is not valid. Sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from error
 
 
 def require_role(*roles: Role) -> Callable[..., CurrentUser]:

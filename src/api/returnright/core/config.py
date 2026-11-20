@@ -36,7 +36,15 @@ class Settings(BaseSettings):
     # Uploads and business thresholds
     upload_dir: str = "uploads"
     upload_max_mb: int = Field(default=5, ge=1)
+    photos_per_item_max: int = Field(default=5, ge=1)
     finance_approval_threshold_inr: Decimal = Decimal("10000")
+    warehouse_address: str = (
+        "ReturnRight Returns Centre, Plot 12, Sector 3, Pithampur Industrial Area, "
+        "Dhar, Madhya Pradesh 454775"
+    )
+
+    # Seed script: password given to the demo staff users
+    demo_password: str = Field(default="change-me-demo", min_length=8)
 
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
 
