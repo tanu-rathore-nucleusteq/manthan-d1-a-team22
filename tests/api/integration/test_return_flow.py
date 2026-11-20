@@ -11,7 +11,7 @@ from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
@@ -665,3 +665,279 @@ def test_audit_trail_of_an_unknown_return_is_404(client, world):
 
     assert response.status_code == 404
     assert response.json()["code"] == "return_not_found"
+
+
+# --- end-to-end catalogue: cases not covered above (docs/e2e-test-cases.md) ------------------
+
+
+def refund_ids_for(client, finance, code, status) -> list[int]:
+    page = client.get(f"/api/v1/finance/refunds?status={status}&size=100", headers=finance).json()
+    return [r["refund_id"] for r in page["items"] if r["return_code"] == code]
+
+
+def test_innerwear_item_is_refused_with_422_when_submitted(client, world):
+    customer = world.customer()
+    order = world.order(customer, 5, ("Innerwear", "500.00", 1))
+
+    response = create_return(client, order, customer.email, world.order_item_ids(order))
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "item_not_eligible"
+    assert "can't be returned" in response.json()["message"]
+
+
+@pytest.mark.parametrize(
+    ("days", "status_code"),
+    [(30, 201), (31, 422)],
+    ids=["day 30 is accepted", "day 31 is refused"],
+)
+def test_return_window_boundary_on_submit(client, world, days, status_code):
+    customer = world.customer()
+    order = world.order(customer, days, ("Apparel", "1500.00", 1))
+
+    response = create_return(client, order, customer.email, world.order_item_ids(order))
+
+    assert response.status_code == status_code, response.text
+    if status_code == 422:
+        assert "30-day return window ended" in response.json()["message"]
+
+
+def test_mixed_basket_is_refused_with_the_reason_and_the_eligible_item_alone_succeeds(
+    client, world
+):
+    customer = world.customer()
+    order = world.order(customer, 14, ("Electronics", "8000.00", 1), ("Apparel", "1500.00", 1))
+    electronics_id, apparel_id = world.order_item_ids(order)
+
+    both = create_return(client, order, customer.email, [electronics_id, apparel_id])
+    apparel_only = create_return(client, order, customer.email, [apparel_id])
+
+    assert both.status_code == 422
+    assert "Electronics item" in both.json()["message"]
+    assert "10-day return window" in both.json()["message"]
+    assert "Apparel item" not in both.json()["message"]
+    assert apparel_only.status_code == 201, apparel_only.text
+    assert len(apparel_only.json()["items"]) == 1
+
+
+def test_returning_more_than_was_bought_is_refused(client, world):
+    customer = world.customer()
+    order = world.order(customer, 5, ("Apparel", "500.00", 1))
+    (item_id,) = world.order_item_ids(order)
+
+    response = client.post(
+        "/api/v1/returns",
+        json={
+            "order_number": order.order_number,
+            "email": customer.email,
+            "items": [{"order_item_id": item_id, "quantity": 2, "reason": "size"}],
+            "refund_method": "original_payment",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "invalid_return_request"
+
+
+def test_grade_b_item_refunds_the_full_price(client, world):
+    code, items, agent = returned_and_received(client, world, ("Footwear", "2000.00", 1))
+
+    result = inspect(client, code, agent, items, grade="B").json()
+
+    assert result["items"][0]["refund_amount"] == "2000.00"
+    assert result["status"] == "refunded"
+
+
+def test_refund_of_exactly_10000_is_paid_without_finance(client, world, gateway):
+    code, items, agent = returned_and_received(client, world, ("Home & Kitchen", "10000.00", 1))
+
+    result = inspect(client, code, agent, items).json()
+
+    assert result["needs_finance_approval"] is False
+    assert result["status"] == "refunded"
+    assert gateway.calls == 1
+
+
+def test_refund_of_10000_01_waits_for_finance(client, world, gateway):
+    code, items, agent = returned_and_received(client, world, ("Home & Kitchen", "10000.01", 1))
+
+    result = inspect(client, code, agent, items).json()
+
+    assert result["needs_finance_approval"] is True
+    assert result["status"] == "inspected"
+    assert gateway.calls == 0
+
+
+def test_inspecting_a_return_twice_is_refused_and_pays_once(client, world, gateway):
+    code, items, agent = returned_and_received(client, world, ("Apparel", "1500.00", 1))
+    inspect(client, code, agent, items)
+
+    second = inspect(client, code, agent, items, grade="C")
+
+    assert second.status_code == 409
+    assert second.json()["code"] == "invalid_transition"
+    assert "Already inspected" in second.json()["message"]
+    assert gateway.calls == 1
+
+
+def test_inspection_before_the_parcel_is_received_is_an_invalid_transition(client, world):
+    customer = world.customer()
+    order = world.order(customer, 5, ("Apparel", "1500.00", 1))
+    created = create_return(client, order, customer.email, world.order_item_ids(order)).json()
+    code = created["return_code"]
+    client.post(f"/api/v1/returns/{code}/ship", json={"email": customer.email})
+    agent = staff_headers(client, world, Role.WAREHOUSE_AGENT)
+
+    response = inspect(client, code, agent, created["items"])
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "invalid_transition"
+
+
+def test_paying_a_refund_that_waits_for_finance_is_refused(client, world, gateway):
+    code, items, agent = returned_and_received(client, world, ("Electronics", "12000.00", 1))
+    inspect(client, code, agent, items)
+    finance = staff_headers(client, world, Role.FINANCE_REVIEWER)
+    (refund_id,) = refund_ids_for(client, finance, code, "pending_approval")
+
+    response = client.post(
+        f"/api/v1/finance/refunds/{refund_id}/pay",
+        headers={**finance, "Idempotency-Key": "early-pay-0001"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "refund_not_payable"
+    assert gateway.calls == 0
+
+
+def test_double_click_on_pay_for_a_paid_refund_pays_once(client, world, gateway):
+    code, items, agent = returned_and_received(client, world, ("Apparel", "1500.00", 1))
+    inspect(client, code, agent, items)
+    finance = staff_headers(client, world, Role.FINANCE_REVIEWER)
+    (refund_id,) = refund_ids_for(client, finance, code, "paid")
+    headers = {**finance, "Idempotency-Key": "double-click-0001"}
+
+    first = client.post(f"/api/v1/finance/refunds/{refund_id}/pay", headers=headers)
+    second = client.post(f"/api/v1/finance/refunds/{refund_id}/pay", headers=headers)
+
+    assert first.status_code == second.status_code == 200
+    assert first.json()["status"] == second.json()["status"] == "paid"
+    assert gateway.calls == 1
+    assert len(ledger_for(client, finance, [refund_id])) == 1
+
+
+def test_ledger_matches_every_paid_refund_after_mixed_flows(client, world, db):
+    code, items, agent = returned_and_received(client, world, ("Apparel", "1500.00", 1))
+    inspect(client, code, agent, items, grade="C")
+    code, items, agent = returned_and_received(
+        client, world, ("Footwear", "3000.00", 1), method="store_credit"
+    )
+    inspect(client, code, agent, items)
+
+    mismatches = db.scalar(text("SELECT count(*) FROM returnright.v_ledger_check"))
+
+    assert mismatches == 0
+
+
+def test_customer_timeline_is_ordered_and_visible_only_to_the_owner(client, world):
+    customer = world.customer()
+    order = world.order(customer, 5, ("Apparel", "1500.00", 1))
+    code = create_return(client, order, customer.email, world.order_item_ids(order)).json()[
+        "return_code"
+    ]
+    client.post(f"/api/v1/returns/{code}/ship", json={"email": customer.email})
+
+    own = client.get(
+        f"/api/v1/returns/{code}/timeline", headers={"X-Customer-Email": customer.email}
+    )
+    other = client.get(
+        f"/api/v1/returns/{code}/timeline", headers={"X-Customer-Email": "x@example.com"}
+    )
+
+    assert own.status_code == 200
+    assert [event["status"] for event in own.json()] == ["requested", "approved", "in_transit"]
+    assert other.status_code == 404
+
+
+def test_wrong_email_cannot_mark_a_return_shipped(client, world):
+    customer = world.customer()
+    order = world.order(customer, 5, ("Apparel", "1500.00", 1))
+    code = create_return(client, order, customer.email, world.order_item_ids(order)).json()[
+        "return_code"
+    ]
+
+    response = client.post(f"/api/v1/returns/{code}/ship", json={"email": "x@example.com"})
+
+    assert response.status_code == 404
+    detail = client.get(f"/api/v1/returns/{code}", headers={"X-Customer-Email": customer.email})
+    assert detail.json()["status"] == "approved"
+
+
+def test_warehouse_queue_moves_a_return_from_in_transit_to_received(client, world):
+    customer = world.customer()
+    order = world.order(customer, 5, ("Apparel", "1500.00", 1))
+    code = create_return(client, order, customer.email, world.order_item_ids(order)).json()[
+        "return_code"
+    ]
+    client.post(f"/api/v1/returns/{code}/ship", json={"email": customer.email})
+    agent = staff_headers(client, world, Role.WAREHOUSE_AGENT)
+
+    def queue(status: str) -> set[str]:
+        page = client.get(f"/api/v1/warehouse/returns?status={status}&size=100", headers=agent)
+        return {row["return_code"] for row in page.json()["items"]}
+
+    assert code in queue("in_transit")
+    client.post(f"/api/v1/warehouse/returns/{code}/receive", headers=agent)
+    assert code not in queue("in_transit")
+    assert code in queue("received")
+
+
+def test_each_role_is_refused_on_the_other_roles_actions(client, world):
+    code, items, _agent = returned_and_received(client, world, ("Apparel", "1500.00", 1))
+    finance = staff_headers(client, world, Role.FINANCE_REVIEWER)
+    agent = staff_headers(client, world, Role.WAREHOUSE_AGENT)
+
+    finance_inspects = inspect(client, code, finance, items)
+    agent_reads_approvals = client.get("/api/v1/finance/approvals", headers=agent)
+
+    assert finance_inspects.status_code == 403
+    assert agent_reads_approvals.status_code == 403
+
+
+def test_flagged_customer_can_still_make_a_fifth_return(client, world, db):
+    customer = world.customer()
+    statuses = []
+    for _ in range(5):
+        order = world.order(customer, 5, ("Apparel", "500.00", 1))
+        statuses.append(
+            create_return(client, order, customer.email, world.order_item_ids(order)).status_code
+        )
+
+    db.refresh(customer)
+    assert statuses == [201] * 5
+    assert customer.is_flagged is True
+    flags = db.scalar(
+        select(func.count())
+        .select_from(CustomerFlag)
+        .where(CustomerFlag.customer_id == customer.customer_id)
+    )
+    assert flags == 1
+
+
+def test_photo_larger_than_the_limit_is_refused_with_413(client, world):
+    customer = world.customer()
+    order = world.order(customer, 5, ("Apparel", "1500.00", 1))
+    created = create_return(client, order, customer.email, world.order_item_ids(order)).json()
+    too_big = PNG + b"\x00" * (get_settings().upload_max_mb * 1024 * 1024)
+
+    response = client.post(
+        f"/api/v1/returns/{created['return_code']}/photo",
+        data={
+            "email": customer.email,
+            "return_item_id": str(created["items"][0]["return_item_id"]),
+        },
+        files={"photo": ("big.png", too_big, "image/png")},
+    )
+
+    assert response.status_code == 413
+    assert response.json()["code"] == "photo_too_large"
