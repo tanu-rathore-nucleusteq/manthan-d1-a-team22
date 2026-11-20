@@ -14,6 +14,7 @@ class StatusEventResponse(ResponseDTO):
 
 class ReturnItemResponse(ResponseDTO):
     return_item_id: int
+    order_item_id: int
     product_name: str
     quantity: int
     reason: ReturnReason

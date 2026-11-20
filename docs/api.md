@@ -271,6 +271,7 @@ Example response:
   "items": [
     {
       "return_item_id": 1,
+      "order_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
       "reason": "damaged",
@@ -353,6 +354,7 @@ Example response:
   "items": [
     {
       "return_item_id": 1,
+      "order_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
       "reason": "damaged",
@@ -469,6 +471,7 @@ Example response:
   "items": [
     {
       "return_item_id": 1,
+      "order_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
       "reason": "damaged",
@@ -565,6 +568,7 @@ Example response:
   "items": [
     {
       "return_item_id": 1,
+      "order_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
       "reason": "damaged",
@@ -617,6 +621,7 @@ Example response:
   "items": [
     {
       "return_item_id": 1,
+      "order_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
       "reason": "damaged",
@@ -683,6 +688,7 @@ Example response:
   "items": [
     {
       "return_item_id": 1,
+      "order_item_id": 1,
       "product_name": "Cotton kurta",
       "quantity": 1,
       "reason": "damaged",
@@ -1517,6 +1523,7 @@ Unknown fields are rejected.
 | Field | Type | Required | Rules |
 | --- | --- | --- | --- |
 | `return_item_id` | integer | yes |  |
+| `order_item_id` | integer | yes |  |
 | `product_name` | string | yes |  |
 | `quantity` | integer | yes |  |
 | `reason` | [`ReturnReason`](#model-returnreason) | yes |  |

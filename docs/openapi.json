@@ -2673,6 +2673,10 @@
             "type": "integer",
             "title": "Return Item Id"
           },
+          "order_item_id": {
+            "type": "integer",
+            "title": "Order Item Id"
+          },
           "product_name": {
             "type": "string",
             "title": "Product Name"
@@ -2738,6 +2742,7 @@
         "type": "object",
         "required": [
           "return_item_id",
+          "order_item_id",
           "product_name",
           "quantity",
           "reason"
