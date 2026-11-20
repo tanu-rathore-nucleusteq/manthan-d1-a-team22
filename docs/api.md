@@ -1,6 +1,6 @@
 # ReturnRight API
 
-The ReturnRight API has 27 endpoints under `/api/v1`, for customers, warehouse agents, finance reviewers and operations managers. 2 are implemented; the rest are typed stubs that validate input and return `501` until their story lands.
+The ReturnRight API has 27 endpoints under `/api/v1`, for customers, warehouse agents, finance reviewers and operations managers. 3 are implemented; the rest are typed stubs that validate input and return `501` until their story lands.
 
 Generated from the FastAPI app on 2026-11-20 by `python src/api/scripts/generate_api_docs.py`. Do not edit by hand: change the code, then regenerate. The design behind it is in [api-plan.md](api-plan.md).
 
@@ -56,7 +56,7 @@ A `422` validation body looks like this:
 | 2 | GET | [`/api/v1/health/ready`](#op-get-api-v1-health-ready) | Readiness: PostgreSQL and the payment gateway answer | Public | Done |
 | 3 | POST | [`/api/v1/auth/login`](#op-post-api-v1-auth-login) | Sign in and receive a JWT | Public | Stub |
 | 4 | GET | [`/api/v1/auth/me`](#op-get-api-v1-auth-me) | The signed-in user and role | Any staff role | Stub |
-| 5 | POST | [`/api/v1/orders/lookup`](#op-post-api-v1-orders-lookup) | Find an order and explain which items can be returned | Customer (no login) | Stub |
+| 5 | POST | [`/api/v1/orders/lookup`](#op-post-api-v1-orders-lookup) | Find an order and explain which items can be returned | Customer (no login) | Done |
 | 6 | POST | [`/api/v1/returns`](#op-post-api-v1-returns) | Request a return for one or more items | Customer (no login) | Stub |
 | 7 | POST | [`/api/v1/returns/{return_code}/photo`](#op-post-api-v1-returns-return-code-photo) | Upload a photo of the item (JPEG or PNG, stored locally) | Customer (no login) | Stub |
 | 8 | GET | [`/api/v1/returns/{return_code}`](#op-get-api-v1-returns-return-code) | Return details | Customer (no login) | Stub |
@@ -189,7 +189,7 @@ Example response:
 
 Find an order and explain which items can be returned
 
-**Access:** Customer (no login) · **Status:** Stub: returns 501
+**Access:** Customer (no login) · **Status:** Implemented
 
 **Request body:** [`OrderLookupRequest`](#model-orderlookuprequest)
 
@@ -203,9 +203,8 @@ Find an order and explain which items can be returned
 | Status | Meaning | Body |
 | --- | --- | --- |
 | 200 | Success | [`OrderLookupResponse`](#model-orderlookupresponse) |
-| 404 | No order matches this number and email | `{"detail": string}` |
+| 404 | No order matches this number and email | [`ErrorResponse`](#model-errorresponse) |
 | 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
-| 501 | Planned, not implemented yet | `{"detail": string}` |
 
 Example response:
 
@@ -1248,6 +1247,15 @@ Unknown fields are rejected.
 | `average_cycle_time_hours` | number \| null | yes |  |
 | `flagged_customers` | list[[`FlaggedCustomerResponse`](#model-flaggedcustomerresponse)] | yes |  |
 | `generated_at` | datetime | yes |  |
+
+<a id="model-errorresponse"></a>
+### `ErrorResponse`
+
+| Field | Type | Required | Rules |
+| --- | --- | --- | --- |
+| `code` | string | yes |  |
+| `message` | string | yes |  |
+| `request_id` | string \| null | no |  |
 
 <a id="model-flaggedcustomerresponse"></a>
 ### `FlaggedCustomerResponse`

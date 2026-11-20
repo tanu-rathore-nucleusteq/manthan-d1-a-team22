@@ -22,9 +22,23 @@ from returnright.db.session import get_db
 from returnright.domain.enums import Role
 from returnright.dtos.base import EMAIL_PATTERN
 from returnright.dtos.internal.auth import CurrentUser
+from returnright.repositories.order_repository import OrderRepository
+from returnright.services.order_service import OrderService
+from returnright.utils.clock import Clock, get_clock
 
 DbSession = Annotated[Session, Depends(get_db)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
+AppClock = Annotated[Clock, Depends(get_clock)]
+
+
+# --- Services --------------------------------------------------------------------------------
+
+
+def get_order_service(db: DbSession, clock: AppClock) -> OrderService:
+    return OrderService(OrderRepository(db), clock)
+
+
+OrderServiceDep = Annotated[OrderService, Depends(get_order_service)]
 
 # --- Path and header parameters shared by several routers ---------------------------------
 

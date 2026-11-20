@@ -1,0 +1,73 @@
+{
+  "info": {
+    "name": "ReturnRight - BR 1.2 Electronics window (10 days)",
+    "description": "Checks POST /api/v1/orders/lookup against the 10-day electronics window. Every order holds a Smartphone (Electronics) and a Cotton shirt (Apparel, 30 days).\n\nBefore running: load tests/api/fixtures/br_1_2_electronics_window_sample.sql into the database and start the API on {{baseUrl}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "email", "value": "br12e.tester@example.com" }
+  ],
+  "item": [
+    {
+      "name": "Day 10 - phone still returnable (last day)",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "const items = pm.response.json().items;",
+        "const phone = items.find(i => i.category === 'Electronics');",
+        "const shirt = items.find(i => i.category === 'Apparel');",
+        "pm.test('200 OK', () => pm.response.to.have.status(200));",
+        "pm.test('phone is eligible on day 10', () => pm.expect(phone.eligible).to.be.true);",
+        "pm.test('reason names the electronics rule', () => pm.expect(phone.reason).to.include('Electronics items have a 10-day return window'));",
+        "pm.test('shirt is eligible', () => pm.expect(shirt.eligible).to.be.true);",
+        "pm.test('phone window ends 10 days after delivery', () => {",
+        "  const end = new Date(pm.response.json().delivered_on); end.setUTCDate(end.getUTCDate() + 10);",
+        "  pm.expect(phone.window_ends_on).to.eql(end.toISOString().slice(0, 10));",
+        "});"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/orders/lookup",
+        "body": { "mode": "raw", "raw": "{\n  \"order_number\": \"BR12E-DAY10\",\n  \"email\": \"{{email}}\"\n}" }
+      }
+    },
+    {
+      "name": "Day 11 - phone refused, shirt still returnable",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "const items = pm.response.json().items;",
+        "const phone = items.find(i => i.category === 'Electronics');",
+        "const shirt = items.find(i => i.category === 'Apparel');",
+        "pm.test('200 OK', () => pm.response.to.have.status(200));",
+        "pm.test('phone is not eligible on day 11', () => pm.expect(phone.eligible).to.be.false);",
+        "pm.test('reason explains the electronics window ended', () => pm.expect(phone.reason).to.include('10-day return window, which ended on'));",
+        "pm.test('shirt is still eligible (30-day window)', () => pm.expect(shirt.eligible).to.be.true);"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/orders/lookup",
+        "body": { "mode": "raw", "raw": "{\n  \"order_number\": \"BR12E-DAY11\",\n  \"email\": \"{{email}}\"\n}" }
+      }
+    },
+    {
+      "name": "Day 14 - mixed basket",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "const items = pm.response.json().items;",
+        "const phone = items.find(i => i.category === 'Electronics');",
+        "const shirt = items.find(i => i.category === 'Apparel');",
+        "pm.test('200 OK', () => pm.response.to.have.status(200));",
+        "pm.test('phone refused, shirt accepted', () => {",
+        "  pm.expect(phone.eligible).to.be.false;",
+        "  pm.expect(shirt.eligible).to.be.true;",
+        "});",
+        "pm.test('reason says delivered 14 days ago', () => pm.expect(phone.reason).to.include('14 days ago'));"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/orders/lookup",
+        "body": { "mode": "raw", "raw": "{\n  \"order_number\": \"BR12E-DAY14\",\n  \"email\": \"{{email}}\"\n}" }
+      }
+    }
+  ]
+}

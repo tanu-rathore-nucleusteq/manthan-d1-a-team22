@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from returnright.api.exception_handlers import register_exception_handlers
 from returnright.api.v1.router import api_router
 from returnright.core.config import get_settings
 from returnright.db.session import dispose_engine
@@ -34,7 +35,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(api_router)
-    # Still to register as their stories land: exception handlers, request-id middleware, /metrics.
+    register_exception_handlers(app)
+    # Still to register as their stories land: request-id middleware, /metrics.
     return app
 
 
