@@ -77,19 +77,26 @@ def test_order_lookup_with_bad_email_is_rejected():
     assert response.status_code == 422
 
 
+VALID_RETURN = {
+    "order_number": "ORD-1001",
+    "email": "asha@example.com",
+    "items": [{"order_item_id": 1, "reason": "damaged", "reason_details": "Seam torn"}],
+    "refund_method": "store_credit",
+}
+
+
+def test_create_return_with_a_reason_per_item_is_not_implemented_yet():
+    assert client.post("/api/v1/returns", json=VALID_RETURN).status_code == 501
+
+
 def test_create_return_with_unknown_field_is_rejected():
-    response = client.post(
-        "/api/v1/returns",
-        json={
-            "order_number": "ORD-1001",
-            "email": "asha@example.com",
-            "items": [{"order_item_id": 1}],
-            "reason": "damaged",
-            "refund_method": "store_credit",
-            "discount": 100,
-        },
-    )
+    response = client.post("/api/v1/returns", json={**VALID_RETURN, "discount": 100})
     assert response.status_code == 422
+
+
+def test_create_return_with_an_item_without_a_reason_is_rejected():
+    payload = {**VALID_RETURN, "items": [{"order_item_id": 1}]}
+    assert client.post("/api/v1/returns", json=payload).status_code == 422
 
 
 @pytest.mark.parametrize(

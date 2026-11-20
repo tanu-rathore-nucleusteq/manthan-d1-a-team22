@@ -14,8 +14,12 @@ class StatusEventResponse(ResponseDTO):
 
 class ReturnItemResponse(ResponseDTO):
     return_item_id: int
+    order_item_id: int
     product_name: str
     quantity: int
+    reason: ReturnReason
+    reason_details: str | None = None
+    photo_urls: list[str] = []
     grade: Grade | None = None
     decision: ItemDecision | None = None
     refund_amount: Money | None = None
@@ -24,7 +28,6 @@ class ReturnItemResponse(ResponseDTO):
 class ReturnDetailResponse(ResponseDTO):
     return_code: str
     status: ReturnStatus
-    reason: ReturnReason
     refund_method: RefundMethod
     items: list[ReturnItemResponse]
     timeline: list[StatusEventResponse]
@@ -53,6 +56,7 @@ class ReturnSummaryResponse(ResponseDTO):
 
 class PhotoUploadResponse(ResponseDTO):
     return_code: str
+    return_item_id: int
     photo_url: str
     content_type: str
     size_bytes: int

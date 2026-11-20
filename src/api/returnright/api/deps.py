@@ -116,4 +116,4 @@ def require_role(*roles: Role) -> Callable[..., CurrentUser]:
 AnyStaff = Annotated[CurrentUser, Depends(require_role(*Role))]
 WarehouseAgent = Annotated[CurrentUser, Depends(require_role(Role.WAREHOUSE_AGENT))]
 FinanceReviewer = Annotated[CurrentUser, Depends(require_role(Role.FINANCE_REVIEWER))]
-OperationsManager = Annotated[CurrentUser, Depends(require_role(Role.OPERATIONS_MANAGER))]
+OperationsManager = Annotated[CurrentUser, Depends(require_role(Role.OPS_MANAGER))]
