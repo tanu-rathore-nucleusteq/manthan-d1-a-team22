@@ -36,3 +36,23 @@ class ReturnLabelResponse(ResponseDTO):
     return_code: str
     qr_svg: str
     ship_to: str
+
+
+class ReturnSummaryResponse(ResponseDTO):
+    """One row in a staff work queue."""
+
+    return_code: str
+    status: ReturnStatus
+    order_number: str
+    item_count: int
+    refund_total: Money | None = None
+    customer_flagged: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+
+class PhotoUploadResponse(ResponseDTO):
+    return_code: str
+    photo_url: str
+    content_type: str
+    size_bytes: int

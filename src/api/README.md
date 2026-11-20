@@ -59,7 +59,7 @@ From the repository root:
 
 ```powershell
 pip install -r requirements-dev.txt
-cd src/api; alembic init migrations; cd ../..   # first time only, then point migrations/env.py at models.base
+alembic -c src/api/alembic.ini upgrade head     # DATABASE_URL must point at PostgreSQL (localhost:5434 from the laptop)
 uvicorn returnright.main:app --reload --app-dir src/api
 pytest
 ruff check . ; black --check .                  # before every commit
