@@ -29,5 +29,7 @@ class LedgerEntryResponse(ResponseDTO):
     entry_id: int
     refund_id: int
     entry_type: LedgerEntryType
+    method: RefundMethod
     amount: Money
+    gateway_transaction_id: str | None = None
     created_at: datetime
