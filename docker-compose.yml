@@ -1,8 +1,12 @@
-# ReturnRight local stack. For now only the database: PostgreSQL 18, which creates every table
-# from db/schema_v2.sql on first start. The API, gateway and web services join this file later.
-# Start:   docker compose up -d db      (ready when `docker compose ps` shows healthy)
-# Connect: localhost:5434, database/user returnright, password change-me (db:5432 from containers)
-# Port taken? Put DB_PORT=5435 in a .env file at the repository root.
+# ReturnRight local stack: PostgreSQL 18, the mock payment gateway, the FastAPI API and the web app.
+# Run everything: docker compose up --build      (ready when `docker compose ps` shows healthy)
+#   Web app    http://localhost:8080             (nginx; /api/* is proxied to the API)
+#   API docs   http://localhost:8000/docs        health: /api/v1/health, /api/v1/health/ready
+#   Gateway    http://localhost:8001/health      fault switches: /admin/faults
+#   Database   localhost:5434, database/user returnright, password change-me (db:5432 inside)
+# The database creates every table from db/schema_v2.sql on first start; the API seeds demo data
+# only when the database is empty. Staff sign-in: warehouse1, finance1, manager1 / change-me-demo.
+# Port taken? Set DB_PORT, API_PORT, GATEWAY_PORT or WEB_PORT in a .env file (see .env.example).
 # Rebuild after a schema change (deletes all data): docker compose down -v, then up again.
 name: returnright
 
@@ -28,5 +32,68 @@ services:
       retries: 20
     restart: unless-stopped
 
+  gateway:
+    build: ./src/gateway
+    environment:
+      # Processed payments live in the "gateway" schema, created by the service on start-up.
+      GATEWAY_DATABASE_URL: postgresql://returnright:${POSTGRES_PASSWORD:-change-me}@db:5432/returnright
+      GATEWAY_ADMIN_TOKEN: ${GATEWAY_ADMIN_TOKEN:-}
+    ports:
+      - "${GATEWAY_PORT:-8001}:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: ./src/api
+    environment:
+      APP_ENV: docker
+      DATABASE_URL: postgresql+psycopg://returnright:${POSTGRES_PASSWORD:-change-me}@db:5432/returnright
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-change-me-demo}
+      GATEWAY_URL: http://gateway:8001
+      UPLOAD_DIR: /data/uploads
+      CORS_ORIGINS: http://localhost:8080,http://localhost:5173
+    volumes:
+      - uploads:/data/uploads
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./src/web
+      args:
+        VITE_USE_MOCKS: "false"
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
 volumes:
   db-data:
+  uploads:
