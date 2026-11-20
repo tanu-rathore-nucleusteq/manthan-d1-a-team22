@@ -1,0 +1,18 @@
+import react from '@vitejs/plugin-react'
+import { defineConfig, loadEnv } from 'vite'
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const apiTarget = env.API_PROXY_TARGET || 'http://127.0.0.1:8000'
+
+  return {
+    plugins: [react()],
+    server: {
+      port: 5173,
+      // Same-origin calls in dev: /api/* is forwarded to FastAPI, so no CORS setup is needed.
+      proxy: {
+        '/api': { target: apiTarget, changeOrigin: true },
+      },
+    },
+  }
+})

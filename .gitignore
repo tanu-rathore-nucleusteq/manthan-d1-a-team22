@@ -9,4 +9,26 @@ htmlcov/
 
 # Local config and data
 .env
+.env.*
+!.env.example
 uploads/
+
+# Node (src/web, tests/e2e)
+node_modules/
+dist/
+*.local
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
+# IDE / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+Thumbs.db
+.DS_Store
+
+# Claude Code personal settings
+.claude/settings.local.json
