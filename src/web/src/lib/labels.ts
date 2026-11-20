@@ -55,6 +55,7 @@ export const REFUND_METHOD_LABEL: Record<RefundMethod, string> = {
 export const REFUND_STATUS_LABEL: Record<RefundStatus, string> = {
   pending_approval: 'Awaiting approval',
   approved: 'Approved',
+  processing: 'Processing',
   paid: 'Paid',
   failed: 'Failed',
   rejected: 'Rejected',
@@ -63,6 +64,7 @@ export const REFUND_STATUS_LABEL: Record<RefundStatus, string> = {
 export const REFUND_STATUS_TONE: Record<RefundStatus, Tone> = {
   pending_approval: 'warning',
   approved: 'info',
+  processing: 'info',
   paid: 'success',
   failed: 'danger',
   rejected: 'danger',

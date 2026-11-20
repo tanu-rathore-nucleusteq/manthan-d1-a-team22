@@ -13,6 +13,10 @@ npm run dev                    # http://localhost:5173
 
 In dev, `/api/*` is proxied to FastAPI at `http://127.0.0.1:8000`, so the app needs no CORS setup.
 
+### Run against the real API
+
+The app runs on an in-browser mock by default. To call FastAPI instead, start the API on :8000, put `VITE_USE_MOCKS=false` in `.env.local` and restart `npm run dev`. The HTTP calls live in `src/api/httpBackend.ts`; sign in again, because mock tokens are not valid JWTs.
+
 ## Scripts
 
 | Command             | What it does                                                    |

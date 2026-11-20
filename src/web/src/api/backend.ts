@@ -1,3 +1,4 @@
+import { httpBackend } from './httpBackend'
 import { mockBackend } from './mock/mockBackend'
 import type {
   ApprovalDecisionRequest,
@@ -51,8 +52,8 @@ export interface ReturnRightBackend {
   getDashboard(): Promise<DashboardResponse>
 }
 
-/** True until the API is ready. Set VITE_USE_MOCKS=false to call the real API. */
+/** Mocks by default. Set VITE_USE_MOCKS=false to call the real API. */
 export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false'
 
-// The HTTP implementation is added when the API document arrives; until then the mock serves every call.
-export const backend: ReturnRightBackend = mockBackend
+// The in-browser mock serves every call unless VITE_USE_MOCKS=false; then the FastAPI service does.
+export const backend: ReturnRightBackend = USE_MOCKS ? mockBackend : httpBackend

@@ -16,7 +16,8 @@ export type ReturnStatus =
 export type Grade = 'A' | 'B' | 'C'
 export type ItemDecision = 'accept' | 'reject'
 export type RefundMethod = 'original_payment' | 'store_credit'
-export type RefundStatus = 'pending_approval' | 'approved' | 'paid' | 'failed' | 'rejected'
+export type RefundStatus =
+  'pending_approval' | 'approved' | 'processing' | 'paid' | 'failed' | 'rejected'
 export type ReturnReason =
   'damaged' | 'wrong_item' | 'not_as_described' | 'size_or_fit' | 'no_longer_needed' | 'other'
 export type LedgerEntryType = 'gateway_refund' | 'store_credit'
