@@ -1,18 +1,40 @@
-import { WIZARD_STEPS } from '../wizardSteps'
+interface StepperProps {
+  steps: readonly string[]
+  current: number
+  /** Lets the customer jump back to a completed step. */
+  onSelect?: (index: number) => void
+}
 
-/** Wizard progress indicator. `current` is the 0-based index of the active step. */
-export function Stepper({ current }: { current: number }) {
+export function Stepper({ steps, current, onSelect }: StepperProps) {
   return (
     <ol className="stepper" aria-label="Return steps">
-      {WIZARD_STEPS.map((label, i) => (
-        <li
-          key={label}
-          className={i < current ? 'done' : i === current ? 'current' : undefined}
-          aria-current={i === current ? 'step' : undefined}
-        >
-          <span className="stepper__index">{i + 1}</span> {label}
-        </li>
-      ))}
+      {steps.map((label, i) => {
+        const state = i < current ? 'done' : i === current ? 'current' : 'upcoming'
+        const content = (
+          <>
+            <span className="stepper__index" aria-hidden="true">
+              {state === 'done' ? '✓' : i + 1}
+            </span>
+            <span className="stepper__label">{label}</span>
+            {state === 'done' && <span className="visually-hidden"> (completed)</span>}
+          </>
+        )
+        return (
+          <li
+            key={label}
+            className={`stepper__step stepper__step--${state}`}
+            aria-current={state === 'current' ? 'step' : undefined}
+          >
+            {state === 'done' && onSelect ? (
+              <button type="button" className="stepper__button" onClick={() => onSelect(i)}>
+                {content}
+              </button>
+            ) : (
+              <span className="stepper__button">{content}</span>
+            )}
+          </li>
+        )
+      })}
     </ol>
   )
 }

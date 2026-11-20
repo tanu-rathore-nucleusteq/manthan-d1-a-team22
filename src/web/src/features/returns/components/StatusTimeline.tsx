@@ -1,23 +1,50 @@
-import { RETURN_STEPS, type ReturnStatus } from '../returnStatus'
+import type { ReturnStatus, StatusEventResponse } from '../../../api/types'
+import { formatDateTime } from '../../../lib/format'
+import { STATUS_FLOW, STATUS_LABEL } from '../../../lib/labels'
 
-/** Vertical timeline: Requested → … → Inspected → Refunded or Rejected. */
-export function StatusTimeline({ status }: { status: ReturnStatus }) {
-  const isFinal = status === 'Refunded' || status === 'Rejected'
-  const reached = isFinal
-    ? RETURN_STEPS.length
-    : RETURN_STEPS.indexOf(status as (typeof RETURN_STEPS)[number])
-  const steps: ReturnStatus[] = [...RETURN_STEPS, isFinal ? status : 'Refunded']
+/** Past events with their time and note, then the steps still to come. */
+export function StatusTimeline({
+  status,
+  timeline,
+}: {
+  status: ReturnStatus
+  timeline: StatusEventResponse[]
+}) {
+  const final = status === 'refunded' || status === 'rejected'
+  const upcoming = final ? [] : STATUS_FLOW.slice(STATUS_FLOW.indexOf(status) + 1)
 
   return (
-    <ol className="timeline" aria-label="Return status">
-      {steps.map((step, i) => {
-        const state = i < reached ? 'done' : i === reached ? 'current' : 'upcoming'
+    <ol className="timeline" aria-label="Return status history">
+      {timeline.map((event, i) => {
+        const current = i === timeline.length - 1
+        const tone = event.status === 'rejected' ? 'danger' : current && !final ? 'current' : 'done'
         return (
-          <li key={step} className={`timeline__step timeline__step--${state}`}>
-            <span aria-current={state === 'current' ? 'step' : undefined}>{step}</span>
+          <li
+            key={`${event.status}-${event.at}`}
+            className={`timeline__item timeline__item--${tone}`}
+          >
+            <span className="timeline__marker" aria-hidden="true" />
+            <div className="timeline__content">
+              <span className="timeline__title" aria-current={current ? 'step' : undefined}>
+                {STATUS_LABEL[event.status]}
+              </span>
+              <time className="timeline__time" dateTime={event.at}>
+                {formatDateTime(event.at)}
+              </time>
+              {event.note && <p className="timeline__note">{event.note}</p>}
+            </div>
           </li>
         )
       })}
+      {upcoming.map((step) => (
+        <li key={step} className="timeline__item timeline__item--upcoming">
+          <span className="timeline__marker" aria-hidden="true" />
+          <div className="timeline__content">
+            <span className="timeline__title">{STATUS_LABEL[step]}</span>
+            <span className="timeline__time">Not yet</span>
+          </div>
+        </li>
+      ))}
     </ol>
   )
 }

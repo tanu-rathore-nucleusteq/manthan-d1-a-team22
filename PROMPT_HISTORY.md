@@ -32,6 +32,40 @@ Hackathon rule: prompts must contain only synthetic or public data. Never paste 
 
 ## History
 
+### P8: Professional UI before the API is ready
+
+| Date | Author | Tool | Phase | Commit |
+| --- | --- | --- | --- | --- |
+| 2026-11-20 | tanu-rathore02 | Claude Code | Build | — |
+
+**Prompt**
+> as per the architecture shared, start creating a professional structural UI. backend APIs are not ready yet. I will share API doc once available. till then start creating professional and complete UI and append the UI Pages details in the artifact
+
+(Interrupted once with "stop", then resumed with "continue working in the latest folder structure".)
+
+**Outcome**
+- Built 13 pages for the four personas on the `feature/user-interface` branch:
+  - Customer: lookup, 5-step wizard, QR label, status, track.
+  - Staff: sign in.
+  - Warehouse: queue, inspection.
+  - Finance: approvals, approval detail, ledger.
+  - Manager: dashboard.
+- TypeScript types copy the backend DTOs in `src/api/returnright/dtos`. A mock backend with synthetic data follows the domain rules, so the whole flow works now. Switching to the real API changes only `src/web/src/api/backend.ts`.
+- Added shared components: button, field, card, badge, alert, confirm dialog, toast, segmented control, stat tile, skeleton loading, and empty and error states. Added design tokens with dark mode, print styles for the label, and phone-width layouts.
+- Dashboard charts follow the dataviz skill. The bar color was checked with its validator in light and dark. Every chart has a table view and a keyboard-accessible tooltip.
+- Results: 26 e2e tests (13 flows × desktop and phone) pass; typecheck, lint and build are clean.
+- Added a "UI pages" section to the architecture doc, listing each route, its purpose, its backend call, and the DTO fields the UI still needs (PROPOSED).
+- Corrections:
+  - The e2e sign-in helper navigated away before login finished. Fixed by waiting for the redirect.
+  - Money showed as "₹1,099.5". Amounts with paise now always show 2 decimals.
+  - Counts showed without separators ("2000"). Fixed to "2,000".
+  - The first e2e run failed because the laptop had about 1 GB of free memory. Ran with `--workers=1`.
+
+**Files changed:** `src/web/src/**`, `tests/e2e/specs/**`
+**Kept?** Yes
+
+---
+
 ### P7: Commit and push to the new repo
 
 | Date | Author | Tool | Phase | Commit |
