@@ -1,5 +1,5 @@
-"""Customer returns: create a return, upload its photo (multipart), get the label and QR code,
-view the status timeline, mark it shipped.
+"""Customer returns: create a return, upload a photo per item (multipart), get the label and QR
+code, view the status timeline, mark it shipped.
 """
 
 from typing import Annotated
@@ -35,12 +35,13 @@ def create_return(payload: CreateReturnRequest, db: DbSession) -> ReturnDetailRe
     "/{return_code}/photo",
     response_model=PhotoUploadResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Upload a photo of the item (JPEG or PNG, stored locally)",
+    summary="Upload a photo of one returned item (JPEG or PNG, stored locally)",
     responses={413: {"description": "File larger than UPLOAD_MAX_MB"}},
 )
 def upload_photo(
     return_code: ReturnCode,
     email: Annotated[str, Form(max_length=254, pattern=EMAIL_PATTERN)],
+    return_item_id: Annotated[int, Form(gt=0)],
     photo: Annotated[UploadFile, File(description="JPEG or PNG")],
     db: DbSession,
     settings: AppSettings,
