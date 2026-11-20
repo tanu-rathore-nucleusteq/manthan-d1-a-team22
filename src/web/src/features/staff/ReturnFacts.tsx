@@ -1,34 +1,20 @@
+import { apiAssetUrl } from '../../api/client'
 import type { ReturnDetailResponse } from '../../api/types'
-import { Badge } from '../../components/ui/Badge'
 import { Card } from '../../components/ui/Card'
 import { formatDateTime } from '../../lib/format'
 import { REASON_LABEL, REFUND_METHOD_LABEL } from '../../lib/labels'
 import { StatusTimeline } from '../returns/components/StatusTimeline'
 
-/** Side column shared by the warehouse and finance detail screens: facts, photo, audit trail. */
+/** Side column shared by the warehouse and finance detail screens: facts, photos, audit trail. */
 export function ReturnFacts({ detail }: { detail: ReturnDetailResponse }) {
+  const photos = detail.items.flatMap((item) =>
+    (item.photo_urls ?? []).map((url) => ({ url, item: item.product_name })),
+  )
+
   return (
     <div className="stack">
       <Card title="Return details">
         <dl className="facts">
-          <div>
-            <dt>Customer</dt>
-            <dd>
-              {detail.customer_name ?? '—'}{' '}
-              {detail.customer_flagged && <Badge tone="warning">Flagged</Badge>}
-            </dd>
-          </div>
-          <div>
-            <dt>Order</dt>
-            <dd className="mono">{detail.order_number ?? '—'}</dd>
-          </div>
-          <div>
-            <dt>Reason</dt>
-            <dd>
-              {REASON_LABEL[detail.reason]}
-              {detail.reason_details && <p className="muted">“{detail.reason_details}”</p>}
-            </dd>
-          </div>
           <div>
             <dt>Refund to</dt>
             <dd>{REFUND_METHOD_LABEL[detail.refund_method]}</dd>
@@ -37,20 +23,31 @@ export function ReturnFacts({ detail }: { detail: ReturnDetailResponse }) {
             <dt>Requested</dt>
             <dd>{formatDateTime(detail.created_at)}</dd>
           </div>
+          {detail.items.map((item) => (
+            <div key={item.return_item_id}>
+              <dt>Reason</dt>
+              <dd>
+                {REASON_LABEL[item.reason]}
+                {detail.items.length > 1 && <span className="muted"> · {item.product_name}</span>}
+                {item.reason_details && <p className="muted">“{item.reason_details}”</p>}
+              </dd>
+            </div>
+          ))}
         </dl>
       </Card>
 
-      <Card title="Customer photo">
-        {detail.photo_url ? (
-          <img
-            src={detail.photo_url}
-            alt={`Customer photo for ${detail.return_code}`}
-            className="photo"
-          />
+      <Card title="Customer photos">
+        {photos.length > 0 ? (
+          photos.map((p) => (
+            <img
+              key={p.url}
+              src={apiAssetUrl(p.url)}
+              alt={`Customer photo of ${p.item}`}
+              className="photo"
+            />
+          ))
         ) : (
-          <p className="muted">
-            Photo is stored with the return; the preview appears once the API serves it.
-          </p>
+          <p className="muted">The customer didn't add a photo.</p>
         )}
       </Card>
 

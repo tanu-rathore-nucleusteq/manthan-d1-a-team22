@@ -64,7 +64,7 @@ A `422` validation body looks like this:
 | 10 | GET | [`/api/v1/returns/{return_code}/label`](#op-get-api-v1-returns-return-code-label) | Mock return label with a QR code | Customer (no login) | Done |
 | 11 | POST | [`/api/v1/returns/{return_code}/ship`](#op-post-api-v1-returns-return-code-ship) | Customer confirms the parcel is shipped (Approved → In transit) | Customer (no login) | Done |
 | 12 | GET | [`/api/v1/warehouse/returns`](#op-get-api-v1-warehouse-returns) | Work queue of returns, filtered by status | Warehouse agent | Done |
-| 13 | GET | [`/api/v1/warehouse/returns/{return_code}`](#op-get-api-v1-warehouse-returns-return-code) | Find a return by its QR code | Warehouse agent | Done |
+| 13 | GET | [`/api/v1/warehouse/returns/{return_code}`](#op-get-api-v1-warehouse-returns-return-code) | Find a return by its QR code (warehouse agents and finance reviewers) | Warehouse agent, finance reviewer | Done |
 | 14 | POST | [`/api/v1/warehouse/returns/{return_code}/receive`](#op-post-api-v1-warehouse-returns-return-code-receive) | Mark the parcel received (In transit → Received) | Warehouse agent | Done |
 | 15 | POST | [`/api/v1/warehouse/returns/{return_code}/inspection`](#op-post-api-v1-warehouse-returns-return-code-inspection) | Grade each item A, B or C and accept or reject it (Received → Inspected) | Warehouse agent | Done |
 | 16 | GET | [`/api/v1/finance/approvals`](#op-get-api-v1-finance-approvals) | Returns whose refund total is above the approval threshold | Finance reviewer | Done |
@@ -541,9 +541,9 @@ Example response:
 <a id="op-get-api-v1-warehouse-returns-return-code"></a>
 ### `GET /api/v1/warehouse/returns/{return_code}`
 
-Find a return by its QR code
+Find a return by its QR code (warehouse agents and finance reviewers)
 
-**Access:** Warehouse agent · **Status:** Implemented
+**Access:** Warehouse agent, finance reviewer · **Status:** Implemented
 
 | Parameter | In | Type | Required | Rules |
 | --- | --- | --- | --- | --- |

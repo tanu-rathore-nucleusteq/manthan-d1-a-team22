@@ -7,11 +7,12 @@ import jwt
 import pytest
 from fastapi.testclient import TestClient
 
-from returnright.api.deps import get_auth_service
+from returnright.api.deps import get_auth_service, get_inspection_service
 from returnright.core.config import get_settings
 from returnright.core.security import create_access_token, hash_password
 from returnright.domain.enums import Role
 from returnright.dtos.internal.auth import CurrentUser
+from returnright.dtos.responses.returns import ReturnDetailResponse
 from returnright.main import app
 from returnright.services.auth_service import AuthService
 from returnright.utils.clock import FixedClock, SystemClock
@@ -103,6 +104,73 @@ def test_finance_token_cannot_open_the_warehouse_queue(client):
     token = staff_token(datetime.now(UTC))
 
     response = client.get("/api/v1/warehouse/returns", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 403
+
+
+def role_token(role: Role) -> str:
+    user = CurrentUser(user_id=9, username=role.value, role=role)
+    return create_access_token(user, get_settings(), datetime.now(UTC))
+
+
+class FakeInspectionService:
+    def detail(self, code: str) -> ReturnDetailResponse:
+        return ReturnDetailResponse.model_validate(
+            {
+                "return_code": code,
+                "status": "inspected",
+                "refund_method": "original_payment",
+                "items": [
+                    {
+                        "return_item_id": 1,
+                        "order_item_id": 2,
+                        "product_name": "Laptop 14 inch",
+                        "quantity": 1,
+                        "reason": "damaged",
+                        "photo_urls": ["/api/v1/uploads/returns/1.png"],
+                        "grade": "A",
+                        "decision": "accept",
+                        "refund_amount": "12000.00",
+                    }
+                ],
+                "timeline": [],
+                "refund_total": "12000.00",
+                "created_at": datetime.now(UTC),
+            }
+        )
+
+
+@pytest.fixture
+def detail_client():
+    app.dependency_overrides[get_inspection_service] = FakeInspectionService
+    yield TestClient(app)
+    app.dependency_overrides.clear()
+
+
+def test_finance_token_can_open_a_return_detail_with_names_grades_and_photos(detail_client):
+    headers = {"Authorization": f"Bearer {role_token(Role.FINANCE_REVIEWER)}"}
+
+    response = detail_client.get("/api/v1/warehouse/returns/RR-7K2P9QX4", headers=headers)
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["product_name"] == "Laptop 14 inch"
+    assert item["grade"] == "A"
+    assert item["photo_urls"] == ["/api/v1/uploads/returns/1.png"]
+
+
+def test_finance_token_still_cannot_mark_a_parcel_received(detail_client):
+    headers = {"Authorization": f"Bearer {role_token(Role.FINANCE_REVIEWER)}"}
+
+    response = detail_client.post("/api/v1/warehouse/returns/RR-7K2P9QX4/receive", headers=headers)
+
+    assert response.status_code == 403
+
+
+def test_operations_manager_token_cannot_open_a_return_detail(detail_client):
+    headers = {"Authorization": f"Bearer {role_token(Role.OPS_MANAGER)}"}
+
+    response = detail_client.get("/api/v1/warehouse/returns/RR-7K2P9QX4", headers=headers)
 
     assert response.status_code == 403
 

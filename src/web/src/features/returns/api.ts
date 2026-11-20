@@ -32,7 +32,10 @@ export function useCreateReturn() {
   return useMutation({
     mutationFn: async ({ body, photo }: { body: CreateReturnRequest; photo: File }) => {
       const created = await backend.createReturn(body)
-      await backend.uploadReturnPhoto(created.return_code, body.email, photo)
+      // The API stores photos per returned item; attach the one photo to each of them.
+      for (const item of created.items) {
+        await backend.uploadReturnPhoto(created.return_code, body.email, item.return_item_id, photo)
+      }
       return created
     },
     onSuccess: (created) => {

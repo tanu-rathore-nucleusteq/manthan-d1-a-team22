@@ -19,7 +19,7 @@ import { Stepper } from '../components/Stepper'
 import { saveProof } from '../customerProof'
 
 const STEPS = ['Items', 'Reason', 'Photo', 'Refund', 'Review'] as const
-const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const PHOTO_TYPES = ['image/jpeg', 'image/png']
 const PHOTO_MAX_BYTES = 5 * 1024 * 1024
 const APPROVAL_THRESHOLD = 10_000
 
@@ -106,12 +106,13 @@ function Wizard({ orderNumber, deliveredOn, items, email }: WizardProps) {
         body: {
           order_number: orderNumber,
           email,
+          // One reason for the whole return, sent on each item as the API expects.
           items: chosen.map((i) => ({
             order_item_id: i.order_item_id,
             quantity: selected[i.order_item_id],
+            reason: reason!,
+            reason_details: details.trim() || null,
           })),
-          reason: reason!,
-          reason_details: details.trim() || null,
           refund_method: method!,
         },
         photo: photo!,
@@ -138,7 +139,7 @@ function Wizard({ orderNumber, deliveredOn, items, email }: WizardProps) {
 
   const choosePhoto = (file: File | undefined) => {
     if (!file) return
-    if (!PHOTO_TYPES.includes(file.type)) return setError('Use a JPG, PNG or WebP image.')
+    if (!PHOTO_TYPES.includes(file.type)) return setError('Use a JPG or PNG image.')
     if (file.size > PHOTO_MAX_BYTES) return setError('The photo must be 5 MB or smaller.')
     setError(null)
     setPhoto(file)
@@ -230,7 +231,7 @@ function Wizard({ orderNumber, deliveredOn, items, email }: WizardProps) {
               )}
               <span className="dropzone__text">
                 <strong>{photo ? photo.name : 'Choose a photo'}</strong>
-                <span className="muted">JPG, PNG or WebP, up to 5 MB</span>
+                <span className="muted">JPG or PNG, up to 5 MB</span>
               </span>
             </label>
           </Card>

@@ -35,10 +35,19 @@ git log --format='| %ad | `%h` | %an | %s |' --date=short -10
 | --- | --- | --- |
 | `main` | Always runs; stories merge here after review | — |
 | `frontend` | Frontend scaffold (`src/web`), e2e tests (`tests/e2e`), team docs | `main` at `1475fde` |
+| `feature/user-interface` | UI for every persona on a mock backend, then the professional redesign; merged to `main` in PR #8 | `main` |
 
 Repository: `tanu-rathore-nucleusteq/manthan-d1-a-team22` on GitHub. It was re-created on 2026-11-20; history from the earlier shared repo was not carried over.
 
 ## History
+
+### `feature/user-interface`
+
+| Date | Commit | Author | Type | Summary | Area |
+| --- | --- | --- | --- | --- | --- |
+| 2026-11-20 | `ec72bbd` | tanu-rathore02 | chore | Merge `origin/main` (order lookup and eligibility rules, PR #6) into the branch; no conflicts | repo |
+| 2026-11-20 | `905f3ef` | tanu-rathore02 | feat | Professional UI redesign: staff sidebar shell with mobile menu, customer hero lookup, split-screen login, inline SVG icon set, refined light/dark tokens, stat tiles with icons, 44px touch targets | `src/web/` |
+| 2026-11-20 | `d9e5f87` | tanu-rathore02 | feat | Build the complete UI for all personas on a mock backend | `src/web/` |
 
 ### `frontend`
 

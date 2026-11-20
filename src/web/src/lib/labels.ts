@@ -1,4 +1,5 @@
 import type {
+  Grade,
   LedgerEntryType,
   RefundMethod,
   RefundStatus,
@@ -39,36 +40,45 @@ export const STATUS_FLOW: ReturnStatus[] = [
 ]
 
 export const REASON_LABEL: Record<ReturnReason, string> = {
-  damaged: 'Damaged or defective',
+  damaged: 'Arrived damaged',
   wrong_item: 'Wrong item sent',
+  size: 'Size or fit issue',
   not_as_described: 'Not as described',
-  size_or_fit: 'Size or fit',
-  no_longer_needed: 'No longer needed',
-  other: 'Other',
+  changed_mind: 'Changed my mind',
+  quality: 'Poor quality',
+  other: 'Other reason',
 }
 
 export const REFUND_METHOD_LABEL: Record<RefundMethod, string> = {
-  original_payment: 'Original payment method',
+  original_payment: 'Original payment',
   store_credit: 'Store credit',
 }
 
 export const REFUND_STATUS_LABEL: Record<RefundStatus, string> = {
-  pending_approval: 'Awaiting approval',
+  pending_approval: 'Waiting for finance',
   approved: 'Approved',
+  processing: 'Paying',
   paid: 'Paid',
-  failed: 'Failed',
+  failed: 'Payment failed',
   rejected: 'Rejected',
 }
 
 export const REFUND_STATUS_TONE: Record<RefundStatus, Tone> = {
   pending_approval: 'warning',
   approved: 'info',
+  processing: 'info',
   paid: 'success',
   failed: 'danger',
   rejected: 'danger',
 }
 
 export const LEDGER_TYPE_LABEL: Record<LedgerEntryType, string> = {
-  gateway_refund: 'Gateway refund',
-  store_credit: 'Store credit',
+  refund: 'Refund',
+  reversal: 'Reversal',
+}
+
+export const GRADE_LABEL: Record<Grade, string> = {
+  A: 'Like new',
+  B: 'Used, good',
+  C: 'Damaged or incomplete',
 }
