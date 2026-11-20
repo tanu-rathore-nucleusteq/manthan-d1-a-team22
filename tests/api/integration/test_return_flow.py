@@ -34,6 +34,7 @@ from returnright.models import (
     ReturnRequest,
     StaffUser,
 )
+from returnright.repositories.return_repository import ReturnRepository
 
 PASSWORD = "integration-pass-123"
 PASSWORD_HASH = hash_password(PASSWORD)
@@ -45,12 +46,18 @@ class FakeGateway:
         self.paid: dict[str, str] = {}
         self.calls = 0
         self.failures_left = 0
+        self.decline = False  # the bank answers "failed" instead of paying
+        self.on_pay = None  # called while the payment is in flight, e.g. a parallel request
 
     def pay(self, request: GatewayPaymentRequest) -> GatewayPaymentResult:
         self.calls += 1
+        if self.on_pay:
+            self.on_pay(request)
         if self.failures_left:
             self.failures_left -= 1
             raise GatewayUnavailableError("HTTP 502")
+        if self.decline:
+            return GatewayPaymentResult(f"gw_declined_{self.calls}", "failed", False, 1.0)
         replayed = request.idempotency_key in self.paid
         transaction_id = self.paid.setdefault(request.idempotency_key, f"gw_{len(self.paid) + 1}")
         return GatewayPaymentResult(transaction_id, "succeeded", replayed, 1.0)
@@ -1064,3 +1071,386 @@ def test_team_list_shows_every_account_without_passwords(client, world):
 
     assert member in team
     assert all("password_hash" not in row for row in team)
+
+
+# --- coverage gaps: races, gateway outcomes, validation edges, dashboard parts ---------------
+
+
+def race_before_next_commit(db, monkeypatch, sql: str, params: dict) -> None:
+    """Run a competing write just before the service's next commit, as if another request
+    committed between this request reading the row and writing it back."""
+    real_commit = db.commit
+
+    def racing_commit():
+        monkeypatch.setattr(db, "commit", real_commit)
+        db.execute(text(sql), params)
+        real_commit()
+
+    monkeypatch.setattr(db, "commit", racing_commit)
+
+
+def return_id_of(db, code: str) -> int:
+    return db.scalar(select(ReturnRequest.return_id).where(ReturnRequest.return_code == code))
+
+
+def mark_paid_by_a_parallel_request(db):
+    def on_pay(request: GatewayPaymentRequest) -> None:
+        db.execute(
+            text(
+                "UPDATE returnright.refunds SET status = 'PAID', paid_at = now(), "
+                "gateway_reference = 'gw_parallel' WHERE refund_id = :refund_id"
+            ),
+            {"refund_id": request.refund_id},
+        )
+
+    return on_pay
+
+
+def customer_return(client, world, *lines, delivered_days_ago=5):
+    """A created return; returns (customer, code, items)."""
+    customer = world.customer()
+    order = world.order(customer, delivered_days_ago, *lines)
+    created = create_return(client, order, customer.email, world.order_item_ids(order))
+    assert created.status_code == 201, created.text
+    return customer, created.json()["return_code"], created.json()["items"]
+
+
+def upload(client, code, email, return_item_id, data=PNG):
+    return client.post(
+        f"/api/v1/returns/{code}/photo",
+        data={"email": email, "return_item_id": str(return_item_id)},
+        files={"photo": ("item.png", data, "image/png")},
+    )
+
+
+# Races: the second of two simultaneous requests is stopped by the database.
+
+
+def test_same_item_submitted_twice_at_the_same_moment_is_stopped_by_the_database(
+    client, world, monkeypatch
+):
+    # Both requests pass the "already returned?" check before either one has saved.
+    monkeypatch.setattr(ReturnRepository, "order_items_already_returned", lambda self, ids: set())
+    customer = world.customer()
+    order = world.order(customer, 5, ("Apparel", "1500.00", 1))
+    item_ids = world.order_item_ids(order)
+
+    first = create_return(client, order, customer.email, item_ids)
+    second = create_return(client, order, customer.email, item_ids)
+
+    assert first.status_code == 201
+    assert second.status_code == 409
+    assert second.json()["code"] == "duplicate_return"
+
+
+def test_two_reviewers_deciding_at_the_same_moment_pay_once(
+    client, world, db, gateway, monkeypatch
+):
+    code, items, agent = returned_and_received(client, world, ("Electronics", "12000.00", 1))
+    inspect(client, code, agent, items)
+    finance = staff_headers(client, world, Role.FINANCE_REVIEWER)
+    other_reviewer = db.scalar(
+        select(StaffUser.staff_id).where(
+            StaffUser.email == f"{world.staff(Role.FINANCE_REVIEWER)}@example.com"
+        )
+    )
+    race_before_next_commit(
+        db,
+        monkeypatch,
+        "INSERT INTO returnright.finance_approvals (return_id, reviewer_id, decision) "
+        "VALUES (:return_id, :reviewer_id, 'APPROVED')",
+        {"return_id": return_id_of(db, code), "reviewer_id": other_reviewer},
+    )
+
+    response = client.post(
+        f"/api/v1/finance/approvals/{code}/decision", json={"approve": True}, headers=finance
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "already_decided"
+    assert gateway.calls == 0
+
+
+def test_two_agents_inspecting_at_the_same_moment_only_one_wins(
+    client, world, db, gateway, monkeypatch
+):
+    code, items, agent = returned_and_received(client, world, ("Apparel", "1500.00", 1))
+    race_before_next_commit(
+        db,
+        monkeypatch,
+        "UPDATE returnright.returns SET version = version + 1 WHERE return_id = :return_id",
+        {"return_id": return_id_of(db, code)},
+    )
+
+    response = inspect(client, code, agent, items)
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "concurrent_update"
+    assert gateway.calls == 0
+    detail = client.get(f"/api/v1/warehouse/returns/{code}", headers=agent).json()
+    assert detail["status"] == "received"
+
+
+def test_refund_settled_by_a_parallel_request_is_not_recorded_twice(client, world, db, gateway):
+    gateway.on_pay = mark_paid_by_a_parallel_request(db)
+    code, items, agent = returned_and_received(client, world, ("Apparel", "1500.00", 1))
+
+    inspect(client, code, agent, items)
+
+    finance = staff_headers(client, world, Role.FINANCE_REVIEWER)
+    (refund_id,) = refund_ids_for(client, finance, code, "paid")
+    refund = client.get(f"/api/v1/finance/refunds/{refund_id}", headers=finance).json()
+    assert refund["gateway_transaction_id"] == "gw_parallel"  # the first finisher's payment
+    assert ledger_for(client, finance, [refund_id]) == []  # this request added no second row
+
+
+def test_gateway_error_after_a_parallel_request_paid_keeps_the_refund_paid(
+    client, world, db, gateway
+):
+    gateway.on_pay = mark_paid_by_a_parallel_request(db)
+    gateway.failures_left = 1
+    code, items, agent = returned_and_received(client, world, ("Apparel", "1500.00", 1))
+
+    inspect(client, code, agent, items)
+
+    finance = staff_headers(client, world, Role.FINANCE_REVIEWER)
+    assert len(refund_ids_for(client, finance, code, "paid")) == 1
+    assert refund_ids_for(client, finance, code, "failed") == []
+
+
+# Gateway outcomes and money paths.
+
+
+def test_declined_payment_is_failed_and_a_later_retry_pays(client, world, gateway):
+    gateway.decline = True
+    code, items, agent = returned_and_received(client, world, ("Apparel", "1500.00", 1))
+
+    inspected = inspect(client, code, agent, items).json()
+
+    assert inspected["status"] == "inspected"
+    finance = staff_headers(client, world, Role.FINANCE_REVIEWER)
+    (refund_id,) = refund_ids_for(client, finance, code, "failed")
+    gateway.decline = False
+    retried = client.post(
+        f"/api/v1/finance/refunds/{refund_id}/pay",
+        headers={**finance, "Idempotency-Key": "after-decline-0001"},
+    )
+    assert retried.json()["status"] == "paid"
+    detail = client.get(f"/api/v1/warehouse/returns/{code}", headers=agent).json()
+    assert detail["status"] == "refunded"
+
+
+def test_paying_a_refund_that_finance_rejected_is_refused(client, world, gateway):
+    code, items, agent = returned_and_received(client, world, ("Electronics", "12000.00", 1))
+    inspect(client, code, agent, items)
+    finance = staff_headers(client, world, Role.FINANCE_REVIEWER)
+    client.post(
+        f"/api/v1/finance/approvals/{code}/decision",
+        json={"approve": False, "comment": "Damage not shown in photos"},
+        headers=finance,
+    )
+    (refund_id,) = refund_ids_for(client, finance, code, "rejected")
+
+    response = client.post(
+        f"/api/v1/finance/refunds/{refund_id}/pay",
+        headers={**finance, "Idempotency-Key": "pay-rejected-0001"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "refund_not_payable"
+    assert gateway.calls == 0
+
+
+def test_deciding_on_a_return_that_does_not_wait_for_finance_is_refused(client, world):
+    code, items, agent = returned_and_received(client, world, ("Apparel", "1500.00", 1))
+    inspect(client, code, agent, items)
+    finance = staff_headers(client, world, Role.FINANCE_REVIEWER)
+
+    response = client.post(
+        f"/api/v1/finance/approvals/{code}/decision", json={"approve": True}, headers=finance
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "no_pending_approval"
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "role", "body"),
+    [
+        ("get", "/api/v1/finance/refunds/999999", Role.FINANCE_REVIEWER, None),
+        ("post", "/api/v1/finance/refunds/999999/pay", Role.FINANCE_REVIEWER, None),
+        (
+            "post",
+            "/api/v1/finance/approvals/RR-NOPE0000/decision",
+            Role.FINANCE_REVIEWER,
+            {"approve": True},
+        ),
+        (
+            "post",
+            "/api/v1/warehouse/returns/RR-NOPE0000/inspection",
+            Role.WAREHOUSE_AGENT,
+            {"items": [{"return_item_id": 1, "grade": "A", "decision": "accept"}]},
+        ),
+    ],
+    ids=["refund detail", "refund pay", "approval decision", "inspection"],
+)
+def test_unknown_refund_or_return_is_404(client, world, method, path, role, body):
+    headers = {**staff_headers(client, world, role), "Idempotency-Key": "unknown-id-0001"}
+
+    response = getattr(client, method)(path, headers=headers, **({"json": body} if body else {}))
+
+    assert response.status_code == 404
+    assert response.json()["code"] in {"refund_not_found", "return_not_found"}
+
+
+# Request validation the earlier cases do not reach.
+
+
+def test_creating_a_return_with_the_wrong_email_is_404(client, world):
+    customer = world.customer()
+    order = world.order(customer, 5, ("Apparel", "1500.00", 1))
+
+    response = create_return(client, order, "someone.else@example.com", world.order_item_ids(order))
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "order_not_found"
+
+
+def test_the_same_item_listed_twice_in_one_request_is_refused(client, world):
+    customer = world.customer()
+    order = world.order(customer, 5, ("Apparel", "1500.00", 1))
+    (item_id,) = world.order_item_ids(order)
+
+    response = create_return(client, order, customer.email, [item_id, item_id])
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "invalid_return_request"
+    assert "only be listed once" in response.json()["message"]
+
+
+def test_an_item_from_another_order_is_refused(client, world):
+    customer = world.customer()
+    order = world.order(customer, 5, ("Apparel", "1500.00", 1))
+    other = world.order(customer, 5, ("Apparel", "900.00", 1))
+
+    response = create_return(client, order, customer.email, world.order_item_ids(other))
+
+    assert response.status_code == 422
+    assert "not part of this order" in response.json()["message"]
+
+
+def test_label_of_a_rejected_return_is_unavailable(client, world):
+    customer, code, items = customer_return(client, world, ("Apparel", "1500.00", 1))
+    client.post(f"/api/v1/returns/{code}/ship", json={"email": customer.email})
+    agent = staff_headers(client, world, Role.WAREHOUSE_AGENT)
+    client.post(f"/api/v1/warehouse/returns/{code}/receive", headers=agent)
+    inspect(client, code, agent, items, decision="reject")
+
+    response = client.get(
+        f"/api/v1/returns/{code}/label", headers={"X-Customer-Email": customer.email}
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "label_unavailable"
+
+
+def test_photo_after_the_warehouse_received_the_parcel_is_refused(client, world):
+    customer, code, items = customer_return(client, world, ("Apparel", "1500.00", 1))
+    client.post(f"/api/v1/returns/{code}/ship", json={"email": customer.email})
+    agent = staff_headers(client, world, Role.WAREHOUSE_AGENT)
+    client.post(f"/api/v1/warehouse/returns/{code}/receive", headers=agent)
+
+    response = upload(client, code, customer.email, items[0]["return_item_id"])
+
+    assert response.status_code == 422
+    assert "before the warehouse receives" in response.json()["message"]
+
+
+def test_photo_for_an_item_outside_the_return_is_refused(client, world):
+    customer, code, _items = customer_return(client, world, ("Apparel", "1500.00", 1))
+
+    response = upload(client, code, customer.email, 999999)
+
+    assert response.status_code == 422
+    assert "not part of this return" in response.json()["message"]
+
+
+def test_sixth_photo_of_one_item_is_refused(client, world):
+    customer, code, items = customer_return(client, world, ("Apparel", "1500.00", 1))
+    item_id = items[0]["return_item_id"]
+    limit = get_settings().photos_per_item_max
+
+    accepted = [upload(client, code, customer.email, item_id).status_code for _ in range(limit)]
+    extra = upload(client, code, customer.email, item_id)
+
+    assert accepted == [201] * limit
+    assert extra.status_code == 422
+    assert f"at most {limit} photos" in extra.json()["message"]
+
+
+def test_inspection_grading_one_item_twice_is_refused(client, world):
+    code, items, agent = returned_and_received(client, world, ("Apparel", "1500.00", 1))
+
+    response = inspect(client, code, agent, items + items)
+
+    assert response.status_code == 422
+    assert "only be graded once" in response.json()["message"]
+
+
+def test_inspection_of_an_item_outside_the_return_is_refused(client, world):
+    code, items, agent = returned_and_received(client, world, ("Apparel", "1500.00", 1))
+    grades = [
+        {"return_item_id": items[0]["return_item_id"], "grade": "A", "decision": "accept"},
+        {"return_item_id": 999999, "grade": "A", "decision": "accept"},
+    ]
+
+    response = client.post(
+        f"/api/v1/warehouse/returns/{code}/inspection", json={"items": grades}, headers=agent
+    )
+
+    assert response.status_code == 422
+    assert "not part of this return" in response.json()["message"]
+
+
+# The three dashboard endpoints that each read one part.
+
+
+def test_return_rates_endpoint_counts_todays_return_and_sorts_highest_first(client, world):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+    today = datetime.now(UTC).date().isoformat()
+    customer_return(client, world, ("Apparel", "1500.00", 1))
+
+    rates = client.get(
+        f"/api/v1/dashboard/return-rates?date_from={today}&date_to={today}", headers=manager
+    ).json()
+
+    apparel_rate = next(rate for rate in rates if rate["category"] == "Apparel")
+    assert apparel_rate["returns"] >= 1
+    assert [rate["return_rate"] for rate in rates] == sorted(
+        (rate["return_rate"] for rate in rates), reverse=True
+    )
+
+
+def test_top_reasons_endpoint_respects_the_limit_most_common_first(client, world):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+    customer_return(client, world, ("Apparel", "1500.00", 1))
+
+    reasons = client.get("/api/v1/dashboard/top-reasons?limit=2", headers=manager).json()
+
+    assert 1 <= len(reasons) <= 2
+    assert [reason["count"] for reason in reasons] == sorted(
+        (reason["count"] for reason in reasons), reverse=True
+    )
+
+
+def test_flagged_customers_endpoint_lists_a_customer_with_four_returns(client, world):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+    customer = world.customer()
+    for _ in range(4):
+        order = world.order(customer, 5, ("Apparel", "500.00", 1))
+        create_return(client, order, customer.email, world.order_item_ids(order))
+
+    flagged = client.get("/api/v1/dashboard/flagged-customers", headers=manager).json()
+
+    entry = next(row for row in flagged if row["customer_id"] == customer.customer_id)
+    assert entry["returns_last_30_days"] == 4
