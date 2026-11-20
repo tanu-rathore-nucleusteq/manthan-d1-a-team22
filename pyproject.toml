@@ -4,18 +4,21 @@
 [tool.black]
 line-length = 100
 target-version = ["py313"]
+# Helper scripts for Claude Code skills are not app code.
+extend-exclude = '^/\.claude/'
 
 [tool.ruff]
 line-length = 100
 target-version = "py313"
 src = ["src/api", "src/gateway"]
+extend-exclude = [".claude"]
 
 [tool.ruff.lint]
 # E/F errors, I imports, B bugbear, UP upgrades, N naming, S security (bandit), SIM simplify
 select = ["E", "F", "I", "B", "UP", "N", "S", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S105", "S106"]
+"tests/**" = ["S101", "S105", "S106", "S311"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src/api", "src/gateway"]

@@ -1,0 +1,76 @@
+# Lint and test the API and gateway, lint and build the web app, and build the three images.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:18
+        env:
+          POSTGRES_USER: returnright
+          POSTGRES_PASSWORD: change-me
+          POSTGRES_DB: returnright
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U returnright -d returnright"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://returnright:change-me@localhost:5432/returnright
+      PGPASSWORD: change-me
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements-dev.txt
+            src/api/requirements.txt
+            src/gateway/requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Ruff
+        run: ruff check .
+      - name: Black
+        run: black --check .
+      - name: Load the database schema
+        run: |
+          psql -h localhost -U returnright -d returnright -v ON_ERROR_STOP=1 -f db/schema_v2.sql
+          psql -h localhost -U returnright -d returnright \
+            -c "ALTER DATABASE returnright SET search_path = returnright, public"
+      - name: Tests
+        run: pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: src/web/.nvmrc
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+      # npm install, not npm ci, until package-lock.json is regenerated: the current lock file
+      # lacks Linux-only optional packages (@emnapi/core, @emnapi/runtime), so npm ci fails.
+      - run: npm install --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the gateway, API and web images
+        run: docker compose build gateway api web
