@@ -1,10 +1,14 @@
 # Commit Log
 
-All commits on branch `feature/application-structure`, newest first (9 total).
+All commits on branch `feature/api-stubs-and-db`, newest first (13 total).
 Regenerated automatically by `.githooks/post-commit`. Do not edit by hand.
 
 | # | Commit | Date | Author | Message |
 |---|--------|------|--------|---------|
+| 13 | `ea67587` | 2026-11-20 16:00 | Anil Vishwakarma | docs: add API plan and generated API documentation |
+| 12 | `217d94b` | 2026-11-20 16:00 | Anil Vishwakarma | feat: add API stubs and response models for all 27 endpoints |
+| 11 | `c9b4f70` | 2026-11-20 16:00 | Anil Vishwakarma | feat: add PostgreSQL connection, settings and Alembic |
+| 10 | `b26509a` | 2026-11-20 16:00 | Anil Vishwakarma | chore: add commit and prompt logging |
 | 9 | `837c92e` | 2026-11-20 15:24 | Akash Ping | docs: add API and gateway READMEs |
 | 8 | `5f879ba` | 2026-11-20 15:24 | Akash Ping | test: add test folder layout |
 | 7 | `27f6590` | 2026-11-20 15:24 | Akash Ping | feat: add mock payment gateway service structure and DTOs |
