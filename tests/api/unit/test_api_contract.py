@@ -3,8 +3,14 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from returnright.api.deps import get_current_user, get_order_service
+from returnright.api.deps import (
+    get_current_user,
+    get_order_service,
+    get_refund_service,
+    get_return_service,
+)
 from returnright.api.v1.endpoints import health
+from returnright.core.exceptions import OrderNotFoundError, RefundNotFoundError
 from returnright.db.session import get_db
 from returnright.domain.enums import Role
 from returnright.dtos.internal.auth import CurrentUser
@@ -85,8 +91,19 @@ VALID_RETURN = {
 }
 
 
-def test_create_return_with_a_reason_per_item_is_not_implemented_yet():
-    assert client.post("/api/v1/returns", json=VALID_RETURN).status_code == 501
+class NoOrderReturns:
+    def create(self, _payload):
+        raise OrderNotFoundError()
+
+
+def test_create_return_with_a_reason_per_item_reaches_the_service():
+    app.dependency_overrides[get_return_service] = NoOrderReturns
+    try:
+        response = client.post("/api/v1/returns", json=VALID_RETURN)
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 404
+    assert response.json()["code"] == "order_not_found"
 
 
 def test_create_return_with_unknown_field_is_rejected():
@@ -126,11 +143,18 @@ def test_pay_refund_without_idempotency_key_is_rejected(as_finance_reviewer):
     assert response.status_code == 422
 
 
-def test_pay_refund_with_idempotency_key_is_not_implemented_yet(as_finance_reviewer):
+class NoRefunds:
+    def pay_and_describe(self, *_args):
+        raise RefundNotFoundError()
+
+
+def test_pay_refund_with_idempotency_key_reaches_the_service(as_finance_reviewer):
+    app.dependency_overrides[get_refund_service] = NoRefunds
     response = client.post(
         "/api/v1/finance/refunds/1/pay", headers={"Idempotency-Key": "refund-1-attempt"}
     )
-    assert response.status_code == 501
+    assert response.status_code == 404
+    assert response.json()["code"] == "refund_not_found"
 
 
 def test_wrong_role_is_forbidden(as_finance_reviewer):

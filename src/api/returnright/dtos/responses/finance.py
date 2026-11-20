@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from returnright.domain.enums import LedgerEntryType, RefundMethod, RefundStatus
-from returnright.dtos.base import Money, ResponseDTO
+from returnright.dtos.base import Money, ResponseDTO, SignedMoney
 
 
 class RefundResponse(ResponseDTO):
@@ -30,6 +30,6 @@ class LedgerEntryResponse(ResponseDTO):
     refund_id: int
     entry_type: LedgerEntryType
     method: RefundMethod
-    amount: Money
+    amount: SignedMoney
     gateway_transaction_id: str | None = None
     created_at: datetime

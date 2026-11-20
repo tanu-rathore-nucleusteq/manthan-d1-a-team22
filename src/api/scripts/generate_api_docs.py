@@ -27,7 +27,25 @@ DOCS_DIR = REPO_ROOT / "docs"
 IMPLEMENTED = {
     ("GET", "/api/v1/health"),
     ("GET", "/api/v1/health/ready"),
+    ("POST", "/api/v1/auth/login"),
+    ("GET", "/api/v1/auth/me"),
     ("POST", "/api/v1/orders/lookup"),
+    ("POST", "/api/v1/returns"),
+    ("POST", "/api/v1/returns/{return_code}/photo"),
+    ("GET", "/api/v1/returns/{return_code}"),
+    ("GET", "/api/v1/returns/{return_code}/timeline"),
+    ("GET", "/api/v1/returns/{return_code}/label"),
+    ("POST", "/api/v1/returns/{return_code}/ship"),
+    ("GET", "/api/v1/warehouse/returns"),
+    ("GET", "/api/v1/warehouse/returns/{return_code}"),
+    ("POST", "/api/v1/warehouse/returns/{return_code}/receive"),
+    ("POST", "/api/v1/warehouse/returns/{return_code}/inspection"),
+    ("GET", "/api/v1/finance/approvals"),
+    ("POST", "/api/v1/finance/approvals/{return_code}/decision"),
+    ("GET", "/api/v1/finance/refunds"),
+    ("GET", "/api/v1/finance/refunds/{refund_id}"),
+    ("POST", "/api/v1/finance/refunds/{refund_id}/pay"),
+    ("GET", "/api/v1/finance/ledger"),
 }
 
 TAG_ORDER = [

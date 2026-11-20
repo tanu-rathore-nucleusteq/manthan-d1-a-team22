@@ -86,6 +86,16 @@
               }
             }
           },
+          "401": {
+            "description": "Wrong username or password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -204,11 +214,35 @@
               }
             }
           },
+          "404": {
+            "description": "No order matches this number and email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "409": {
-            "description": "An item is already in an open return (for example a double submit)"
+            "description": "An item is already in an open return (for example a double submit)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "422": {
-            "description": "An item is not eligible; the reason is in the message"
+            "description": "An item is not eligible; the reason is in the message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -257,15 +291,32 @@
               }
             }
           },
-          "413": {
-            "description": "File larger than UPLOAD_MAX_MB"
-          },
-          "422": {
-            "description": "Validation Error",
+          "404": {
+            "description": "No return matches this code and email",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "File larger than UPLOAD_MAX_MB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Not a JPEG or PNG, or too many photos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -314,6 +365,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReturnDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No return matches this code and email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -380,6 +441,16 @@
               }
             }
           },
+          "404": {
+            "description": "No return matches this code and email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -434,6 +505,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReturnLabelResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No return matches this code and email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Return rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -495,8 +586,25 @@
               }
             }
           },
+          "404": {
+            "description": "No return matches this code and email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "409": {
-            "description": "The return is not in the Approved state"
+            "description": "The return is not in the Approved state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -628,6 +736,16 @@
               }
             }
           },
+          "404": {
+            "description": "No return has this code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -680,8 +798,25 @@
               }
             }
           },
+          "404": {
+            "description": "No return has this code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "409": {
-            "description": "The return is not In transit"
+            "description": "Already received (code already_received), or not shipped yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -745,15 +880,32 @@
               }
             }
           },
-          "409": {
-            "description": "The return is not Received"
-          },
-          "422": {
-            "description": "Validation Error",
+          "404": {
+            "description": "No return has this code",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not received yet, or already inspected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Not every item graded exactly once",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -871,8 +1023,25 @@
               }
             }
           },
+          "404": {
+            "description": "No return has this code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "409": {
-            "description": "Already decided"
+            "description": "Already decided, or not waiting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -999,6 +1168,16 @@
               }
             }
           },
+          "404": {
+            "description": "No refund has this id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1059,8 +1238,25 @@
               }
             }
           },
+          "404": {
+            "description": "No refund has this id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "409": {
-            "description": "Not approved, or already paid with another key"
+            "description": "Waiting for approval, or rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",

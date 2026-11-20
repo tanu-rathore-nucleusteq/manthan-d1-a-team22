@@ -7,16 +7,17 @@ from typing import Annotated
 from fastapi import APIRouter, Path, Query
 
 from returnright.api.deps import (
-    DbSession,
+    ApprovalServiceDep,
     FinanceReviewer,
     IdempotencyKey,
     Pagination,
+    RefundServiceDep,
     ReturnCode,
 )
-from returnright.api.not_implemented import not_implemented
 from returnright.domain.enums import RefundStatus
+from returnright.dtos.internal.audit import Actor
 from returnright.dtos.requests.finance import ApprovalDecisionRequest
-from returnright.dtos.responses.common import PageResponse
+from returnright.dtos.responses.common import ErrorResponse, PageResponse
 from returnright.dtos.responses.finance import (
     LedgerEntryResponse,
     PendingApprovalResponse,
@@ -34,39 +35,49 @@ RefundId = Annotated[int, Path(gt=0)]
     summary="Returns whose refund total is above the approval threshold",
 )
 def list_pending_approvals(
-    user: FinanceReviewer, db: DbSession, page: Pagination
+    user: FinanceReviewer, service: ApprovalServiceDep, page: Pagination
 ) -> PageResponse[PendingApprovalResponse]:
-    not_implemented("Pending approvals")
+    return service.queue(page.page, page.size)
 
 
 @router.post(
     "/approvals/{return_code}/decision",
     response_model=PendingApprovalResponse,
     summary="Approve or reject a refund above the threshold",
-    responses={409: {"description": "Already decided"}},
+    responses={
+        404: {"model": ErrorResponse, "description": "No return has this code"},
+        409: {"model": ErrorResponse, "description": "Already decided, or not waiting"},
+    },
 )
 def decide_approval(
     return_code: ReturnCode,
     payload: ApprovalDecisionRequest,
     user: FinanceReviewer,
-    db: DbSession,
+    service: ApprovalServiceDep,
 ) -> PendingApprovalResponse:
-    not_implemented("Approval decision")
+    return service.decide(return_code, user, payload.approve, payload.comment)
 
 
 @router.get("/refunds", response_model=PageResponse[RefundResponse], summary="Refunds by status")
 def list_refunds(
     user: FinanceReviewer,
-    db: DbSession,
+    service: RefundServiceDep,
     page: Pagination,
     status: Annotated[RefundStatus | None, Query()] = None,
 ) -> PageResponse[RefundResponse]:
-    not_implemented("Refund list")
+    return service.page(status, page.page, page.size)
 
 
-@router.get("/refunds/{refund_id}", response_model=RefundResponse, summary="One refund")
-def get_refund(refund_id: RefundId, user: FinanceReviewer, db: DbSession) -> RefundResponse:
-    not_implemented("Refund details")
+@router.get(
+    "/refunds/{refund_id}",
+    response_model=RefundResponse,
+    summary="One refund",
+    responses={404: {"model": ErrorResponse, "description": "No refund has this id"}},
+)
+def get_refund(
+    refund_id: RefundId, user: FinanceReviewer, service: RefundServiceDep
+) -> RefundResponse:
+    return service.detail(refund_id)
 
 
 @router.post(
@@ -78,15 +89,18 @@ def get_refund(refund_id: RefundId, user: FinanceReviewer, db: DbSession) -> Ref
         "Idempotency-Key on every retry: the gateway call always uses refund-<return_item_id>, "
         "so a refund is never paid twice."
     ),
-    responses={409: {"description": "Not approved, or already paid with another key"}},
+    responses={
+        404: {"model": ErrorResponse, "description": "No refund has this id"},
+        409: {"model": ErrorResponse, "description": "Waiting for approval, or rejected"},
+    },
 )
 def pay_refund(
     refund_id: RefundId,
     idempotency_key: IdempotencyKey,
     user: FinanceReviewer,
-    db: DbSession,
+    service: RefundServiceDep,
 ) -> RefundResponse:
-    not_implemented("Refund payment")
+    return service.pay_and_describe(refund_id, Actor.staff(user), idempotency_key)
 
 
 @router.get(
@@ -96,8 +110,8 @@ def pay_refund(
 )
 def list_ledger(
     user: FinanceReviewer,
-    db: DbSession,
+    service: RefundServiceDep,
     page: Pagination,
     refund_id: Annotated[int | None, Query(gt=0)] = None,
 ) -> PageResponse[LedgerEntryResponse]:
-    not_implemented("Ledger")
+    return service.ledger(refund_id, page.page, page.size)
