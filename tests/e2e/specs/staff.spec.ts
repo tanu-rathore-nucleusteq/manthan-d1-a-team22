@@ -27,9 +27,9 @@ test('warehouse agent grades a high-value return and it goes to finance', async 
   await expect(page.getByText('Choose a grade and a decision.')).toBeVisible()
 
   await page.getByRole('button', { name: /Quick fill/ }).click()
-  await expect(page.getByText('Needs finance approval')).toBeVisible()
+  await expect(page.locator('.inspect-item__refund')).toHaveText('Full refund')
   await page.getByRole('button', { name: 'Submit inspection' }).click()
-  await expect(page.getByText(/sent for finance approval/)).toBeVisible()
+  await expect(page.getByText('Refund of ₹12,999 sent for finance approval')).toBeVisible()
 })
 
 test('warehouse agent grades C and the refund is halved', async ({ page }) => {
@@ -37,7 +37,7 @@ test('warehouse agent grades C and the refund is halved', async ({ page }) => {
   await page.goto('/warehouse/returns/RET-24055')
   await page.getByLabel('C', { exact: true }).check()
   await page.getByLabel('Accept').check()
-  await expect(page.locator('.inspect-item__refund')).toHaveText('₹1,099.50')
+  await expect(page.locator('.inspect-item__refund')).toHaveText('50% refund')
   await page.getByRole('button', { name: 'Submit inspection' }).click()
   await expect(page.getByText('Refund of ₹1,099.50 paid')).toBeVisible()
 })

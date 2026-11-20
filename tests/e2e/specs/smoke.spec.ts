@@ -11,7 +11,7 @@ test('customer lands on the return lookup page', async ({ page }) => {
 test('staff pages redirect to sign in when logged out', async ({ page }) => {
   await page.goto('/finance')
   await expect(page).toHaveURL(/\/login$/)
-  await expect(page.getByRole('heading', { name: 'Staff sign in' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible()
 })
 
 test('a staff role cannot open another role’s page', async ({ page }) => {
