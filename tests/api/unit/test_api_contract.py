@@ -48,6 +48,9 @@ PLANNED_ROUTES = {
     ("GET", "/api/v1/dashboard/flagged-customers"),
     ("GET", "/api/v1/audit"),
     ("GET", "/api/v1/audit/returns/{return_code}"),
+    ("GET", "/api/v1/staff"),
+    ("POST", "/api/v1/staff"),
+    ("PATCH", "/api/v1/staff/{staff_id}"),
 }
 
 
@@ -58,7 +61,7 @@ def test_every_planned_route_is_in_the_openapi_schema():
         for method in operations
     }
     assert published == PLANNED_ROUTES
-    assert len(published) == 27
+    assert len(published) == 30
 
 
 def test_order_lookup_is_implemented():
@@ -123,6 +126,7 @@ def test_create_return_with_an_item_without_a_reason_is_rejected():
         "/api/v1/finance/approvals",
         "/api/v1/dashboard",
         "/api/v1/audit",
+        "/api/v1/staff",
     ],
 )
 def test_staff_routes_without_a_token_return_401(path):

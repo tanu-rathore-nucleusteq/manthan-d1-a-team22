@@ -1,6 +1,6 @@
 # ReturnRight API
 
-The ReturnRight API has 27 endpoints under `/api/v1`, for customers, warehouse agents, finance reviewers and operations managers. 27 are implemented; the rest are typed stubs that validate input and return `501` until their story lands.
+The ReturnRight API has 30 endpoints under `/api/v1`, for customers, warehouse agents, finance reviewers and operations managers. 30 are implemented; the rest are typed stubs that validate input and return `501` until their story lands.
 
 Generated from the FastAPI app on 2026-11-20 by `python src/api/scripts/generate_api_docs.py`. Do not edit by hand: change the code, then regenerate. The design behind it is in [api-plan.md](api-plan.md).
 
@@ -79,6 +79,9 @@ A `422` validation body looks like this:
 | 25 | GET | [`/api/v1/dashboard/flagged-customers`](#op-get-api-v1-dashboard-flagged-customers) | Customers with more than 3 returns in 30 days | Operations manager | Done |
 | 26 | GET | [`/api/v1/audit`](#op-get-api-v1-audit) | Audit log, newest first | Operations manager | Done |
 | 27 | GET | [`/api/v1/audit/returns/{return_code}`](#op-get-api-v1-audit-returns-return-code) | Everything recorded for one return, oldest first | Operations manager | Done |
+| 28 | GET | [`/api/v1/staff`](#op-get-api-v1-staff) | Every staff account | Operations manager | Done |
+| 29 | POST | [`/api/v1/staff`](#op-post-api-v1-staff) | Add a staff account with a temporary password | Operations manager | Done |
+| 30 | PATCH | [`/api/v1/staff/{staff_id}`](#op-patch-api-v1-staff-staff-id) | Switch a staff account off or on | Operations manager | Done |
 
 ## Health
 
@@ -1199,6 +1202,116 @@ Example response:
 ]
 ```
 
+## Staff accounts
+
+<a id="op-get-api-v1-staff"></a>
+### `GET /api/v1/staff`
+
+Every staff account
+
+**Access:** Operations manager · **Status:** Implemented
+
+| Status | Meaning | Body |
+| --- | --- | --- |
+| 200 | Success | list[[`StaffMemberResponse`](#model-staffmemberresponse)] |
+| 401 | No or invalid bearer token | `{"detail": string}` |
+| 403 | Signed in with another role | `{"detail": string}` |
+
+Example response:
+
+```json
+[
+  {
+    "user_id": 1,
+    "full_name": "string",
+    "email": "asha.verma@example.com",
+    "username": "warehouse1",
+    "role": "warehouse_agent",
+    "is_active": true
+  }
+]
+```
+
+<a id="op-post-api-v1-staff"></a>
+### `POST /api/v1/staff`
+
+Add a staff account with a temporary password
+
+**Access:** Operations manager · **Status:** Implemented
+
+**Request body:** [`CreateStaffRequest`](#model-createstaffrequest)
+
+```json
+{
+  "full_name": "string",
+  "email": "asha.verma@example.com",
+  "role": "warehouse_agent",
+  "password": "demo-password"
+}
+```
+
+| Status | Meaning | Body |
+| --- | --- | --- |
+| 201 | Success | [`StaffMemberResponse`](#model-staffmemberresponse) |
+| 401 | No or invalid bearer token | `{"detail": string}` |
+| 403 | Signed in with another role | `{"detail": string}` |
+| 409 | The email or username is taken | [`ErrorResponse`](#model-errorresponse) |
+| 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
+
+Example response:
+
+```json
+{
+  "user_id": 1,
+  "full_name": "string",
+  "email": "asha.verma@example.com",
+  "username": "warehouse1",
+  "role": "warehouse_agent",
+  "is_active": true
+}
+```
+
+<a id="op-patch-api-v1-staff-staff-id"></a>
+### `PATCH /api/v1/staff/{staff_id}`
+
+Switch a staff account off or on
+
+**Access:** Operations manager · **Status:** Implemented
+
+| Parameter | In | Type | Required | Rules |
+| --- | --- | --- | --- | --- |
+| `staff_id` | path | integer | yes | > 0 |
+
+**Request body:** [`UpdateStaffRequest`](#model-updatestaffrequest)
+
+```json
+{
+  "is_active": true
+}
+```
+
+| Status | Meaning | Body |
+| --- | --- | --- |
+| 200 | Success | [`StaffMemberResponse`](#model-staffmemberresponse) |
+| 401 | No or invalid bearer token | `{"detail": string}` |
+| 403 | Signed in with another role | `{"detail": string}` |
+| 404 | No staff account has this id | [`ErrorResponse`](#model-errorresponse) |
+| 409 | Managers can't switch themselves off | [`ErrorResponse`](#model-errorresponse) |
+| 422 | Validation Error | [`HTTPValidationError`](#model-httpvalidationerror) |
+
+Example response:
+
+```json
+{
+  "user_id": 1,
+  "full_name": "string",
+  "email": "asha.verma@example.com",
+  "username": "warehouse1",
+  "role": "warehouse_agent",
+  "is_active": true
+}
+```
+
 ## Enums
 
 | Enum | Values |
@@ -1261,6 +1374,18 @@ Unknown fields are rejected.
 | `email` | string | yes | max length 254, pattern `^[^@\s]+@[^@\s]+\.[^@\s]+$` |
 | `items` | list[[`ReturnItemRequest`](#model-returnitemrequest)] | yes | min items 1, max items 20 |
 | `refund_method` | [`RefundMethod`](#model-refundmethod) | yes |  |
+
+<a id="model-createstaffrequest"></a>
+### `CreateStaffRequest`
+
+Unknown fields are rejected.
+
+| Field | Type | Required | Rules |
+| --- | --- | --- | --- |
+| `full_name` | string | yes | min length 2, max length 120 |
+| `email` | string | yes | max length 255, pattern `^[^@\s]+@[^@\s]+\.[^@\s]+$` |
+| `role` | [`Role`](#model-role) | yes |  |
+| `password` | string | yes | min length 10, max length 72 |
 
 <a id="model-customerproofrequest"></a>
 ### `CustomerProofRequest`
@@ -1587,6 +1712,18 @@ One row in a staff work queue.
 | `created_at` | datetime | yes |  |
 | `updated_at` | datetime | yes |  |
 
+<a id="model-staffmemberresponse"></a>
+### `StaffMemberResponse`
+
+| Field | Type | Required | Rules |
+| --- | --- | --- | --- |
+| `user_id` | integer | yes |  |
+| `full_name` | string | yes |  |
+| `email` | string | yes |  |
+| `username` | string | yes |  |
+| `role` | [`Role`](#model-role) | yes |  |
+| `is_active` | boolean | yes |  |
+
 <a id="model-statuseventresponse"></a>
 ### `StatusEventResponse`
 
@@ -1605,6 +1742,15 @@ One row in a staff work queue.
 | `token_type` | `"bearer"` | no | default `"bearer"` |
 | `expires_in` | integer | yes |  |
 | `role` | [`Role`](#model-role) | yes |  |
+
+<a id="model-updatestaffrequest"></a>
+### `UpdateStaffRequest`
+
+Unknown fields are rejected.
+
+| Field | Type | Required | Rules |
+| --- | --- | --- | --- |
+| `is_active` | boolean | yes |  |
 
 <a id="model-userresponse"></a>
 ### `UserResponse`

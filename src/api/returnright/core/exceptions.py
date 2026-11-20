@@ -113,6 +113,32 @@ class AlreadyDecidedError(DomainError):
         super().__init__("Finance has already decided on this return.")
 
 
+class StaffNotFoundError(DomainError):
+    code = "staff_not_found"
+
+    def __init__(self) -> None:
+        super().__init__("We couldn't find that staff member.")
+
+
+class StaffLoginTakenError(DomainError):
+    """Staff sign in with their email or the part before the @, so both must be unique."""
+
+    code = "staff_login_taken"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Someone already signs in with this email or with the same name before the @. "
+            "Use a different email."
+        )
+
+
+class CannotDeactivateSelfError(DomainError):
+    code = "cannot_deactivate_self"
+
+    def __init__(self) -> None:
+        super().__init__("You can't switch off your own account. Ask another manager.")
+
+
 class LabelUnavailableError(DomainError):
     code = "label_unavailable"
 

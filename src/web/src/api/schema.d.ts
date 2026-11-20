@@ -456,7 +456,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Every state change of one return, oldest first */
+        /** Everything recorded for one return, oldest first */
         get: operations["get_return_audit_api_v1_audit_returns__return_code__get"];
         put?: never;
         post?: never;
@@ -464,6 +464,41 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every staff account */
+        get: operations["list_staff_api_v1_staff_get"];
+        put?: never;
+        /** Add a staff account with a temporary password */
+        post: operations["create_staff_api_v1_staff_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/{staff_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Switch a staff account off or on */
+        patch: operations["update_staff_api_v1_staff__staff_id__patch"];
         trace?: never;
     };
 }
@@ -485,10 +520,12 @@ export interface components {
             entity: string;
             /** Entity Id */
             entity_id: number;
+            /** Action */
+            action: string;
             /** From Status */
             from_status: string | null;
             /** To Status */
-            to_status: string;
+            to_status: string | null;
             /** Actor */
             actor: string;
             actor_role: components["schemas"]["Role"] | null;
@@ -533,6 +570,19 @@ export interface components {
             items: components["schemas"]["ReturnItemRequest"][];
             refund_method: components["schemas"]["RefundMethod"];
         };
+        /** CreateStaffRequest */
+        CreateStaffRequest: {
+            /** Full Name */
+            full_name: string;
+            /** Email */
+            email: string;
+            role: components["schemas"]["Role"];
+            /**
+             * Password
+             * @description Temporary password the new user signs in with
+             */
+            password: string;
+        };
         /**
          * CustomerProofRequest
          * @description Sent with customer actions on an existing return, such as marking it shipped.
@@ -565,6 +615,15 @@ export interface components {
             message: string;
             /** Request Id */
             request_id?: string | null;
+            /** Errors */
+            errors?: components["schemas"]["FieldError"][] | null;
+        };
+        /** FieldError */
+        FieldError: {
+            /** Field */
+            field: string;
+            /** Message */
+            message: string;
         };
         /** FlaggedCustomerResponse */
         FlaggedCustomerResponse: {
@@ -843,6 +902,12 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Order Number */
+            order_number: string;
+            /** Customer Name */
+            customer_name?: string | null;
+            /** Customer Flagged */
+            customer_flagged?: boolean | null;
         };
         /** ReturnItemRequest */
         ReturnItemRequest: {
@@ -867,6 +932,8 @@ export interface components {
             product_name: string;
             /** Quantity */
             quantity: number;
+            /** Unit Price */
+            unit_price: string;
             reason: components["schemas"]["ReturnReason"];
             /** Reason Details */
             reason_details?: string | null;
@@ -910,6 +977,8 @@ export interface components {
             status: components["schemas"]["ReturnStatus"];
             /** Order Number */
             order_number: string;
+            /** Customer Name */
+            customer_name: string;
             /** Item Count */
             item_count: number;
             /** Refund Total */
@@ -935,6 +1004,20 @@ export interface components {
          * @enum {string}
          */
         Role: "warehouse_agent" | "finance_reviewer" | "operations_manager";
+        /** StaffMemberResponse */
+        StaffMemberResponse: {
+            /** User Id */
+            user_id: number;
+            /** Full Name */
+            full_name: string;
+            /** Email */
+            email: string;
+            /** Username */
+            username: string;
+            role: components["schemas"]["Role"];
+            /** Is Active */
+            is_active: boolean;
+        };
         /** StatusEventResponse */
         StatusEventResponse: {
             status: components["schemas"]["ReturnStatus"];
@@ -959,6 +1042,14 @@ export interface components {
             /** Expires In */
             expires_in: number;
             role: components["schemas"]["Role"];
+        };
+        /** UpdateStaffRequest */
+        UpdateStaffRequest: {
+            /**
+             * Is Active
+             * @description False stops the account from signing in
+             */
+            is_active: boolean;
         };
         /**
          * UserResponse
@@ -1990,6 +2081,7 @@ export interface operations {
     list_audit_entries_api_v1_audit_get: {
         parameters: {
             query?: {
+                /** @description return, refund or customer */
                 entity?: string | null;
                 entity_id?: number | null;
                 page?: number;
@@ -2040,6 +2132,121 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLogResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_staff_api_v1_staff_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMemberResponse"][];
+                };
+            };
+        };
+    };
+    create_staff_api_v1_staff_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateStaffRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMemberResponse"];
+                };
+            };
+            /** @description The email or username is taken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_staff_api_v1_staff__staff_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                staff_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateStaffRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMemberResponse"];
+                };
+            };
+            /** @description No staff account has this id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Managers can't switch themselves off */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */

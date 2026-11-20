@@ -13,6 +13,7 @@ from starlette.exceptions import HTTPException
 from returnright.core.constants import REQUEST_ID_HEADER
 from returnright.core.exceptions import (
     AlreadyDecidedError,
+    CannotDeactivateSelfError,
     ConcurrentUpdateError,
     DomainError,
     DuplicateReturnError,
@@ -30,6 +31,8 @@ from returnright.core.exceptions import (
     RefundNotFoundError,
     RefundNotPayableError,
     ReturnNotFoundError,
+    StaffLoginTakenError,
+    StaffNotFoundError,
 )
 from returnright.core.logging import request_id_var
 from returnright.dtos.responses.common import ErrorResponse, FieldError
@@ -40,6 +43,7 @@ STATUS_BY_ERROR: dict[type[DomainError], int] = {
     OrderNotFoundError: status.HTTP_404_NOT_FOUND,
     ReturnNotFoundError: status.HTTP_404_NOT_FOUND,
     RefundNotFoundError: status.HTTP_404_NOT_FOUND,
+    StaffNotFoundError: status.HTTP_404_NOT_FOUND,
     InvalidCredentialsError: status.HTTP_401_UNAUTHORIZED,
     InvalidDateRangeError: status.HTTP_422_UNPROCESSABLE_CONTENT,
     InvalidReturnRequestError: status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -54,6 +58,8 @@ STATUS_BY_ERROR: dict[type[DomainError], int] = {
     AlreadyDecidedError: status.HTTP_409_CONFLICT,
     LabelUnavailableError: status.HTTP_409_CONFLICT,
     RefundNotPayableError: status.HTTP_409_CONFLICT,
+    StaffLoginTakenError: status.HTTP_409_CONFLICT,
+    CannotDeactivateSelfError: status.HTTP_409_CONFLICT,
 }
 
 CODE_BY_HTTP_STATUS = {

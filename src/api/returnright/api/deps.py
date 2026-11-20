@@ -35,6 +35,7 @@ from returnright.services.inspection_service import InspectionService
 from returnright.services.order_service import OrderService
 from returnright.services.refund_service import RefundService
 from returnright.services.return_service import ReturnService
+from returnright.services.staff_service import StaffService
 from returnright.utils.clock import Clock, get_clock
 
 DbSession = Annotated[Session, Depends(get_db)]
@@ -92,6 +93,10 @@ def get_audit_log_service(db: DbSession) -> AuditLogService:
     return AuditLogService(db)
 
 
+def get_staff_service(db: DbSession) -> StaffService:
+    return StaffService(db)
+
+
 OrderServiceDep = Annotated[OrderService, Depends(get_order_service)]
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 ReturnServiceDep = Annotated[ReturnService, Depends(get_return_service)]
@@ -99,6 +104,7 @@ InspectionServiceDep = Annotated[InspectionService, Depends(get_inspection_servi
 ApprovalServiceDep = Annotated[ApprovalService, Depends(get_approval_service)]
 DashboardServiceDep = Annotated[DashboardService, Depends(get_dashboard_service)]
 AuditLogServiceDep = Annotated[AuditLogService, Depends(get_audit_log_service)]
+StaffServiceDep = Annotated[StaffService, Depends(get_staff_service)]
 
 # --- Path and header parameters shared by several routers ---------------------------------
 
