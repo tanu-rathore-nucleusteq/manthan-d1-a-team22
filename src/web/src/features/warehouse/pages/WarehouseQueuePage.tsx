@@ -30,8 +30,8 @@ export function WarehouseQueuePage() {
   const open = (e: FormEvent) => {
     e.preventDefault()
     const value = code.trim().toUpperCase()
-    if (!/^RET-\d{3,}$/.test(value))
-      return setError('Scan the label or type a code like RET-24054.')
+    if (!/^(RR|RET)-[A-Z0-9]{3,12}$/.test(value))
+      return setError('Scan the label or type a code like RR-7K2P9QX4.')
     navigate(`/warehouse/returns/${value}`)
   }
 
@@ -72,7 +72,7 @@ export function WarehouseQueuePage() {
           <TextField
             label="Scan or enter return code"
             className="scan-form__field"
-            placeholder="RET-24054"
+            placeholder="RR-7K2P9QX4"
             autoFocus
             autoComplete="off"
             value={code}

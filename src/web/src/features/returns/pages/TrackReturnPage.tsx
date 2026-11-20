@@ -13,6 +13,8 @@ import { returnKeys } from '../api'
 import { saveProof } from '../customerProof'
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+/** API codes look like RR-7K2P9QX4; the mock's look like RET-24051. */
+const RETURN_CODE = /^(RR|RET)-[A-Z0-9]{3,12}$/i
 
 export function TrackReturnPage() {
   const navigate = useNavigate()
@@ -34,9 +36,9 @@ export function TrackReturnPage() {
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const next = {
-      code: /^RET-\d{3,}$/i.test(code.trim())
+      code: RETURN_CODE.test(code.trim())
         ? undefined
-        : 'Enter the return code from your label, e.g. RET-24051.',
+        : 'Enter the return code from your label, e.g. RR-7K2P9QX4.',
       email: EMAIL.test(email.trim()) ? undefined : 'Enter a valid email address.',
     }
     setErrors(next)
@@ -61,7 +63,7 @@ export function TrackReturnPage() {
           )}
           <TextField
             label="Return code"
-            placeholder="RET-24051"
+            placeholder="RR-7K2P9QX4"
             autoComplete="off"
             value={code}
             error={errors.code}
