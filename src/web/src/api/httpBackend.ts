@@ -16,23 +16,11 @@ const ALL = { page: 1, size: 100 }
 
 /**
  * The live ReturnRight API (docs/api.md). Every implemented endpoint the screens use is
- * called here; the dashboard is still a stub on the server, so it stays on the mock.
+ * called here.
  */
-export function createHttpBackend(
-  dashboard: ReturnRightBackend['getDashboard'],
-): ReturnRightBackend {
+export function createHttpBackend(): ReturnRightBackend {
   return {
     login: (body) => call(api.POST('/api/v1/auth/login', { body })),
-
-    // PROVISIONAL path and body until the API publishes the signup endpoint in openapi.json.
-    async signup(body) {
-      const response = await fetch(`${apiBaseUrl}/api/v1/auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!response.ok) throw toApiError(response.status, await response.json().catch(() => null))
-    },
 
     lookupOrder: (body) => call(api.POST('/api/v1/orders/lookup', { body })),
 
@@ -123,6 +111,15 @@ export function createHttpBackend(
       return { ...first, items, size: items.length }
     },
 
-    getDashboard: dashboard,
+    getDashboard: () => call(api.GET('/api/v1/dashboard')),
+
+    listStaff: () => call(api.GET('/api/v1/staff')),
+
+    createStaff: (body) => call(api.POST('/api/v1/staff', { body })),
+
+    updateStaff: (staffId, body) =>
+      call(
+        api.PATCH('/api/v1/staff/{staff_id}', { params: { path: { staff_id: staffId } }, body }),
+      ),
   }
 }

@@ -957,3 +957,110 @@ def test_finance_can_open_a_return_before_deciding_but_cannot_receive_it(client,
     assert detail.status_code == 200
     assert detail.json()["customer_name"] == "Test Customer"
     assert receive.status_code == 403
+
+
+# --- staff accounts --------------------------------------------------------------------------
+
+
+def new_staff(client, manager, **overrides):
+    body = {
+        "full_name": "Meera Iyer",
+        "email": f"m{uuid.uuid4().hex[:8]}@example.com",
+        "role": "warehouse_agent",
+        "password": "temporary-pass-42",
+    } | overrides
+    return client.post("/api/v1/staff", json=body, headers=manager)
+
+
+def test_manager_adds_a_warehouse_agent_who_can_then_sign_in(client, world, db):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+
+    created = new_staff(client, manager)
+
+    assert created.status_code == 201, created.text
+    member = created.json()
+    assert member["role"] == "warehouse_agent"
+    assert member["is_active"] is True
+    assert "password" not in member and "password_hash" not in member
+    login = client.post(
+        "/api/v1/auth/login",
+        json={"username": member["username"], "password": "temporary-pass-42"},
+    )
+    assert login.status_code == 200
+    assert login.json()["role"] == "warehouse_agent"
+    audit = db.scalars(
+        select(AuditLog.action).where(
+            AuditLog.entity_type == "STAFF", AuditLog.entity_id == member["user_id"]
+        )
+    ).all()
+    assert audit == ["CREATED"]
+
+
+def test_email_or_username_already_used_is_refused_with_409(client, world):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+    first = new_staff(client, manager).json()
+
+    same_email = new_staff(client, manager, email=first["email"].upper())
+    same_username = new_staff(client, manager, email=f"{first['username']}@other.example.com")
+
+    assert same_email.status_code == 409
+    assert same_email.json()["code"] == "staff_login_taken"
+    assert same_username.status_code == 409
+
+
+@pytest.mark.parametrize("password", ["short1", "onlyletters", "1234567890"])
+def test_weak_temporary_password_is_refused(client, world, password):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+
+    response = new_staff(client, manager, password=password)
+
+    assert response.status_code == 422
+    assert response.json()["errors"][0]["field"] == "password"
+
+
+def test_only_the_operations_manager_can_add_staff(client, world):
+    finance = staff_headers(client, world, Role.FINANCE_REVIEWER)
+
+    assert new_staff(client, finance, role="finance_reviewer").status_code == 403
+    assert client.post("/api/v1/staff", json={}).status_code == 401
+
+
+def test_switched_off_account_cannot_sign_in_and_can_be_switched_back_on(client, world):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+    member = new_staff(client, manager).json()
+    credentials = {"username": member["username"], "password": "temporary-pass-42"}
+
+    off = client.patch(
+        f"/api/v1/staff/{member['user_id']}", json={"is_active": False}, headers=manager
+    )
+    refused = client.post("/api/v1/auth/login", json=credentials)
+    on = client.patch(
+        f"/api/v1/staff/{member['user_id']}", json={"is_active": True}, headers=manager
+    )
+
+    assert off.json()["is_active"] is False
+    assert refused.status_code == 401
+    assert on.json()["is_active"] is True
+    assert client.post("/api/v1/auth/login", json=credentials).status_code == 200
+
+
+def test_manager_cannot_switch_off_their_own_account(client, world):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+    me = client.get("/api/v1/auth/me", headers=manager).json()
+
+    response = client.patch(
+        f"/api/v1/staff/{me['user_id']}", json={"is_active": False}, headers=manager
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "cannot_deactivate_self"
+
+
+def test_team_list_shows_every_account_without_passwords(client, world):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+    member = new_staff(client, manager).json()
+
+    team = client.get("/api/v1/staff", headers=manager).json()
+
+    assert member in team
+    assert all("password_hash" not in row for row in team)

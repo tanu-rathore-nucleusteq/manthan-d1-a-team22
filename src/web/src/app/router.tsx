@@ -14,6 +14,7 @@ import { ReturnLabelPage } from '../features/returns/pages/ReturnLabelPage'
 import { ReturnStatusPage } from '../features/returns/pages/ReturnStatusPage'
 import { ReturnWizardPage } from '../features/returns/pages/ReturnWizardPage'
 import { TrackReturnPage } from '../features/returns/pages/TrackReturnPage'
+import { TeamPage } from '../features/team/pages/TeamPage'
 import { InspectionPage } from '../features/warehouse/pages/InspectionPage'
 import { WarehouseQueuePage } from '../features/warehouse/pages/WarehouseQueuePage'
 import { AppLayout } from './AppLayout'
@@ -36,7 +37,8 @@ export const router = createBrowserRouter([
 
       // Staff
       { path: 'login', element: <LoginPage /> },
-      { path: 'signup', element: <SignupPage /> },
+      // Creating staff accounts is a manager action in the API (POST /api/v1/staff).
+      { path: 'signup', element: staff([ROLES.operationsManager], <SignupPage />) },
       { path: 'warehouse', element: staff([ROLES.warehouseAgent], <WarehouseQueuePage />) },
       {
         path: 'warehouse/returns/:returnCode',
@@ -49,6 +51,7 @@ export const router = createBrowserRouter([
       },
       { path: 'finance/ledger', element: staff([ROLES.financeReviewer], <LedgerPage />) },
       { path: 'dashboard', element: staff([ROLES.operationsManager], <ManagerDashboardPage />) },
+      { path: 'team', element: staff([ROLES.operationsManager], <TeamPage />) },
 
       { path: '*', element: <NotFoundPage /> },
     ],

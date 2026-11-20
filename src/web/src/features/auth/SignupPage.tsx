@@ -1,20 +1,17 @@
-import { useMutation } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 
-import { backend } from '../../api/backend'
 import { ApiError, getErrorMessage } from '../../api/errors'
-import type { SignupRequest } from '../../api/types'
-import { useAuth } from '../../auth/AuthContext'
-import { HOME_BY_ROLE, ROLES, type Role } from '../../auth/roles'
+import { ROLES, type Role } from '../../auth/roles'
 import { useToast } from '../../components/toast/toastContext'
 import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/Field'
 import { Icon, type IconName } from '../../components/ui/Icon'
+import { PASSWORD_HINT, passwordProblem } from '../../lib/password'
+import { useCreateStaff } from '../team/api'
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
-const MIN_PASSWORD = 8
 
 const ROLE_OPTIONS: { value: Role; label: string; hint: string; icon: IconName }[] = [
   {
@@ -39,10 +36,14 @@ const ROLE_OPTIONS: { value: Role; label: string; hint: string; icon: IconName }
 
 type Errors = Partial<Record<'fullName' | 'email' | 'password' | 'confirm' | 'role', string>>
 
+/**
+ * Staff sign-up. The API has no self sign-up: POST /api/v1/staff creates an account and only
+ * an operations manager may call it, so this page sits behind the manager role.
+ */
 export function SignupPage() {
-  const { session, signIn } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
+  const create = useCreateStaff()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -50,52 +51,43 @@ export function SignupPage() {
   const [role, setRole] = useState<Role | null>(null)
   const [errors, setErrors] = useState<Errors>({})
 
-  // Create the account, then sign in with the same details so the user lands on their queue.
-  const signup = useMutation({
-    mutationFn: async (body: SignupRequest) => {
-      await backend.signup(body)
-      return backend.login({ username: body.email, password: body.password })
-    },
-    onSuccess: (token, body) => {
-      signIn({ token: token.access_token, role: token.role, name: body.full_name })
-      toast({ tone: 'success', title: 'Account created', body: `Welcome, ${body.full_name}.` })
-      navigate(HOME_BY_ROLE[token.role], { replace: true })
-    },
-  })
-
-  if (session && !signup.isPending) return <Navigate to={HOME_BY_ROLE[session.role]} replace />
-
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const next: Errors = {
-      fullName: fullName.trim().length >= 2 ? undefined : 'Enter your full name.',
+      fullName: fullName.trim().length >= 2 ? undefined : 'Enter their full name.',
       email: EMAIL.test(email.trim()) ? undefined : 'Enter a valid work email.',
-      password:
-        password.length >= MIN_PASSWORD ? undefined : `Use at least ${MIN_PASSWORD} characters.`,
+      password: passwordProblem(password),
       confirm: confirm === password ? undefined : "The passwords don't match.",
       role: role ? undefined : 'Choose a role.',
     }
     setErrors(next)
     if (Object.values(next).some(Boolean)) return
-    signup.mutate({
-      full_name: fullName.trim(),
-      email: email.trim().toLowerCase(),
-      password,
-      role: role!,
-    })
+    create.mutate(
+      { full_name: fullName.trim(), email: email.trim().toLowerCase(), role: role!, password },
+      {
+        onSuccess: (member) => {
+          toast({
+            tone: 'success',
+            title: 'Account created',
+            body: `${member.full_name} can now sign in as ${member.username}.`,
+          })
+          navigate('/team')
+        },
+      },
+    )
   }
 
-  const emailTaken = signup.error instanceof ApiError && signup.error.status === 409
+  const loginTaken = create.error instanceof ApiError && create.error.status === 409
 
   return (
     <div className="auth">
       <section className="auth__panel" aria-labelledby="signup-panel-title">
         <span className="auth__badge">
           <Icon name="users" size={14} />
-          Join the team
+          Grow the team
         </span>
         <h2 id="signup-panel-title" className="auth__panel-title">
-          Set up your ReturnRight staff account in a minute.
+          Give a new team member their ReturnRight staff account.
         </h2>
         <ul className="auth__features">
           {ROLE_OPTIONS.map((r) => (
@@ -115,16 +107,17 @@ export function SignupPage() {
       <section className="auth__form" aria-labelledby="signup-title">
         <div className="auth__form-head">
           <h1 id="signup-title" className="auth__title">
-            Create your account
+            Create a staff account
           </h1>
           <p className="muted">
-            Already have one? <Link to="/login">Sign in</Link>
+            Share the password with them in person. Manage everyone on the{' '}
+            <Link to="/team">Team page</Link>.
           </p>
         </div>
 
-        {signup.isError && (
-          <Alert tone="danger" title={emailTaken ? 'Email already registered' : 'Sign up failed'}>
-            {getErrorMessage(signup.error)}
+        {create.isError && (
+          <Alert tone="danger" title={loginTaken ? 'Login already in use' : 'Account not created'}>
+            {getErrorMessage(create.error)}
           </Alert>
         )}
 
@@ -132,7 +125,7 @@ export function SignupPage() {
           <TextField
             label="Full name"
             name="fullName"
-            autoComplete="name"
+            autoComplete="off"
             value={fullName}
             error={errors.fullName}
             onChange={(e) => setFullName(e.target.value)}
@@ -141,9 +134,9 @@ export function SignupPage() {
             label="Work email"
             name="email"
             type="email"
-            autoComplete="email"
-            placeholder="you@company.com"
-            hint="You'll sign in with this email or the part before the @."
+            autoComplete="off"
+            placeholder="name@company.com"
+            hint="They sign in with this email or the part before the @."
             value={email}
             error={errors.email}
             onChange={(e) => setEmail(e.target.value)}
@@ -154,7 +147,7 @@ export function SignupPage() {
               name="password"
               type="password"
               autoComplete="new-password"
-              hint={`At least ${MIN_PASSWORD} characters.`}
+              hint={PASSWORD_HINT}
               value={password}
               error={errors.password}
               onChange={(e) => setPassword(e.target.value)}
@@ -205,9 +198,9 @@ export function SignupPage() {
             )}
           </fieldset>
 
-          <Button type="submit" block loading={signup.isPending}>
+          <Button type="submit" block loading={create.isPending}>
             Create account
-            {!signup.isPending && <Icon name="arrowRight" size={16} />}
+            {!create.isPending && <Icon name="arrowRight" size={16} />}
           </Button>
         </form>
       </section>

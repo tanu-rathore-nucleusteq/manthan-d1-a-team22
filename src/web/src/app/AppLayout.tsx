@@ -48,10 +48,12 @@ export function AppLayout() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
+  // A full page load to /login, so the staff page's "sign in first" redirect can't remember
+  // itself as the page to return to; the next person who signs in lands on their own home.
   const handleSignOut = () => {
     signOut()
     queryClient.clear()
-    navigate('/login')
+    window.location.assign('/login')
   }
 
   const handleReset = () => {

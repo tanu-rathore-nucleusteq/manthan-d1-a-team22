@@ -52,7 +52,9 @@ export function LoginPage() {
     },
   })
 
-  if (session && !login.isPending) return <Navigate to={HOME_BY_ROLE[session.role]} replace />
+  // Signed in (or just signed in): go back to the page that asked for a login, else home.
+  if (session && !login.isPending)
+    return <Navigate to={from ?? HOME_BY_ROLE[session.role]} replace />
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -89,10 +91,7 @@ export function LoginPage() {
           <h1 id="auth-title" className="auth__title">
             Sign in
           </h1>
-          <p className="muted">
-            For warehouse, finance and operations staff. New here?{' '}
-            <Link to="/signup">Create an account</Link>
-          </p>
+          <p className="muted">For warehouse, finance and operations staff.</p>
         </div>
 
         {login.isError && (
@@ -133,7 +132,7 @@ export function LoginPage() {
         </form>
 
         <div className="auth__divider">
-          <span>New to ReturnRight?</span>
+          <span>Operations manager adding someone?</span>
         </div>
         <Link to="/signup" className="btn btn--secondary btn--block">
           <Icon name="users" size={16} />
