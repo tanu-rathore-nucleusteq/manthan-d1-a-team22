@@ -1,19 +1,55 @@
 """Refund amount per item by grade (grade C pays 50%) and whether a refund total needs finance
 approval (above 10,000 INR).
 
-Implemented so far: BR 1.2, the finance check. It applies to the return's refund total (the sum of
-its item refunds), strictly above the threshold, so exactly 10,000.00 INR is paid without review.
-The service passes Settings.finance_approval_threshold_inr; the default here is the same value.
+BR 1.2 rules implemented here:
+- Grade refund: an accepted item refunds 100% for grades A and B and 50% for grade C; a rejected
+  item refunds 0, whatever its grade. This matches chk_grade_percent on inspections.
+- Finance check: applies to the return's refund total (the sum of its item refunds), strictly
+  above the threshold, so exactly 10,000.00 INR is paid without review. The service passes
+  Settings.finance_approval_threshold_inr; the default here is the same value.
 """
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
+from types import MappingProxyType
+
+from returnright.domain.enums import Grade, ItemDecision
 
 FINANCE_APPROVAL_THRESHOLD_INR = Decimal("10000.00")
 """BR 1.2: a return whose refund total is above this needs a finance reviewer's approval."""
 
+GRADE_C_REFUND_PERCENT = 50
+"""BR 1.2: an accepted grade C item refunds half of what the customer paid for it."""
+
+REFUND_PERCENT_BY_GRADE = MappingProxyType({Grade.A: 100, Grade.B: 100, Grade.C: 50})
+"""Refund percent for an accepted item, by condition grade."""
+
 _PAISE = Decimal("0.01")
+
+
+def refund_percent(grade: Grade, decision: ItemDecision) -> int:
+    """100 for an accepted grade A or B item, 50 for an accepted grade C item, 0 when rejected."""
+    if decision is ItemDecision.REJECT:
+        return 0
+    return REFUND_PERCENT_BY_GRADE[grade]
+
+
+def item_refund_amount(
+    unit_price: Decimal, quantity: int, grade: Grade, decision: ItemDecision
+) -> Decimal:
+    """What one returned item line refunds, in INR to the paisa.
+
+    unit_price is the price paid at purchase (order_items.unit_price). Half paise round up, so a
+    grade C item bought for 799.99 refunds 400.00.
+    """
+    if unit_price < 0:
+        raise ValueError("unit_price cannot be negative")
+    if quantity <= 0:
+        raise ValueError("quantity must be positive")
+    paid = unit_price * quantity
+    refund = paid * refund_percent(grade, decision) / 100
+    return refund.quantize(_PAISE, rounding=ROUND_HALF_UP)
 
 
 @dataclass(frozen=True, slots=True)
