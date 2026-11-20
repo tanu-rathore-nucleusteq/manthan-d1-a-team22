@@ -9,6 +9,7 @@ from sqlalchemy.orm.exc import StaleDataError
 
 from returnright.core.config import Settings
 from returnright.core.exceptions import (
+    STAFF_NOT_FOUND,
     AlreadyReceivedError,
     ConcurrentUpdateError,
     InspectionMismatchError,
@@ -178,12 +179,12 @@ class InspectionService:
     def _find(self, code: str, *, for_update: bool = False) -> ReturnRequest:
         return_request = self._returns.get_by_code(code, for_update=for_update)
         if return_request is None:
-            raise ReturnNotFoundError()
+            raise ReturnNotFoundError(STAFF_NOT_FOUND)
         return return_request
 
     def _detail(self, return_request: ReturnRequest) -> ReturnDetailResponse:
         return to_return_detail(
-            return_request, self._audits.status_history(return_request.return_id)
+            return_request, self._audits.status_history(return_request.return_id), for_staff=True
         )
 
 

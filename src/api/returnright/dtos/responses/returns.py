@@ -17,6 +17,7 @@ class ReturnItemResponse(ResponseDTO):
     order_item_id: int
     product_name: str
     quantity: int
+    unit_price: Money
     reason: ReturnReason
     reason_details: str | None = None
     photo_urls: list[str] = []
@@ -33,6 +34,10 @@ class ReturnDetailResponse(ResponseDTO):
     timeline: list[StatusEventResponse]
     refund_total: Money | None = None
     created_at: datetime
+    order_number: str
+    # Staff screens only; left out of the customer's own view.
+    customer_name: str | None = None
+    customer_flagged: bool | None = None
 
 
 class ReturnLabelResponse(ResponseDTO):
@@ -47,6 +52,7 @@ class ReturnSummaryResponse(ResponseDTO):
     return_code: str
     status: ReturnStatus
     order_number: str
+    customer_name: str
     item_count: int
     refund_total: Money | None = None
     customer_flagged: bool = False
