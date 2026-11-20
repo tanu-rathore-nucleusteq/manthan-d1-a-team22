@@ -536,3 +536,132 @@ def test_every_status_change_writes_one_audit_row(client, world, db):
     ).all()
 
     assert changes == ["REQUESTED", "APPROVED", "IN_TRANSIT", "RECEIVED", "INSPECTED", "REFUNDED"]
+
+
+# --- dashboard and audit ---------------------------------------------------------------------
+
+
+def dashboard(client, headers, **params) -> dict:
+    response = client.get("/api/v1/dashboard", params=params, headers=headers)
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def apparel(body: dict) -> dict:
+    return next(row for row in body["return_rate_by_category"] if row["category"] == "Apparel")
+
+
+def damaged(body: dict) -> int:
+    return next((row["count"] for row in body["top_reasons"] if row["reason"] == "damaged"), 0)
+
+
+def test_dashboard_counts_a_new_return_in_its_category_and_reason(client, world):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+    before = dashboard(client, manager)
+    customer = world.customer()
+    order = world.order(customer, 5, ("Apparel", "1500.00", 1))
+
+    assert (
+        create_return(client, order, customer.email, world.order_item_ids(order)).status_code == 201
+    )
+    after = dashboard(client, manager)
+
+    assert apparel(after)["orders"] == apparel(before)["orders"] + 1
+    assert apparel(after)["returns"] == apparel(before)["returns"] + 1
+    assert apparel(after)["return_rate"] == round(
+        apparel(after)["returns"] / apparel(after)["orders"], 4
+    )
+    assert damaged(after) == damaged(before) + 1
+
+
+def test_dashboard_shows_the_flagged_customer_with_their_recent_returns(client, world):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+    customer = world.customer()
+    for _ in range(4):
+        order = world.order(customer, 5, ("Apparel", "900.00", 1))
+        create_return(client, order, customer.email, world.order_item_ids(order))
+
+    flagged = dashboard(client, manager)["flagged_customers"]
+
+    assert {
+        "customer_id": customer.customer_id,
+        "name": "Test Customer",
+        "returns_last_30_days": 4,
+    } in flagged
+
+
+def test_dashboard_range_after_today_has_no_returns_and_no_cycle_time(client, world):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+    tomorrow = (datetime.now(UTC) + timedelta(days=1)).date().isoformat()
+
+    body = dashboard(client, manager, date_from=tomorrow)
+
+    assert all(row["returns"] == 0 for row in body["return_rate_by_category"])
+    assert body["top_reasons"] == []
+    assert body["average_cycle_time_hours"] is None
+
+
+def test_dashboard_start_after_end_is_refused(client, world):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+
+    response = client.get(
+        "/api/v1/dashboard",
+        params={"date_from": "2026-11-20", "date_to": "2026-11-01"},
+        headers=manager,
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "invalid_date_range"
+
+
+def test_dashboard_is_for_operations_managers_only(client, world):
+    agent = staff_headers(client, world, Role.WAREHOUSE_AGENT)
+
+    response = client.get("/api/v1/dashboard", headers=agent)
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "forbidden"
+
+
+def test_audit_trail_of_a_refunded_return_shows_each_change_and_the_payment(client, world):
+    code, items, agent = returned_and_received(client, world, ("Apparel", "1500.00", 1))
+    inspect(client, code, agent, items)
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+
+    entries = client.get(f"/api/v1/audit/returns/{code}", headers=manager).json()
+
+    changes = [entry["to_status"] for entry in entries if entry["action"] == "status_change"]
+    assert changes == ["requested", "approved", "in_transit", "received", "inspected", "refunded"]
+    paid = [entry for entry in entries if entry["action"] == "paid"]
+    assert len(paid) == 1
+    assert paid[0]["entity"] == "refund"
+    assert paid[0]["to_status"] == "paid"
+    received = next(entry for entry in entries if entry["to_status"] == "received")
+    assert received["actor_role"] == "warehouse_agent"
+
+
+def test_audit_log_filters_by_entity_newest_first(client, world):
+    code, items, agent = returned_and_received(client, world, ("Apparel", "1500.00", 1))
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+    return_id = client.get(f"/api/v1/audit/returns/{code}", headers=manager).json()[0]["entity_id"]
+
+    page = client.get(
+        "/api/v1/audit", params={"entity": "return", "entity_id": return_id}, headers=manager
+    ).json()
+
+    assert page["total"] == 4
+    assert [entry["to_status"] for entry in page["items"]] == [
+        "received",
+        "in_transit",
+        "approved",
+        "requested",
+    ]
+
+
+def test_audit_trail_of_an_unknown_return_is_404(client, world):
+    manager = staff_headers(client, world, Role.OPS_MANAGER)
+
+    response = client.get("/api/v1/audit/returns/RR-NOPE0000", headers=manager)
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "return_not_found"
