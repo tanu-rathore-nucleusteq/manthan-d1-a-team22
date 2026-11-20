@@ -10,11 +10,12 @@ from returnright.api.v1.endpoints import (
     health,
     orders,
     returns,
+    staff,
     warehouse,
 )
 from returnright.core.constants import API_V1_PREFIX
 
 api_router = APIRouter(prefix=API_V1_PREFIX)
 
-for module in (health, auth, orders, returns, warehouse, finance, dashboard, audit):
+for module in (health, auth, orders, returns, warehouse, finance, dashboard, audit, staff):
     api_router.include_router(module.router)

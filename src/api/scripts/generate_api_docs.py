@@ -52,6 +52,9 @@ IMPLEMENTED = {
     ("GET", "/api/v1/dashboard/flagged-customers"),
     ("GET", "/api/v1/audit"),
     ("GET", "/api/v1/audit/returns/{return_code}"),
+    ("GET", "/api/v1/staff"),
+    ("POST", "/api/v1/staff"),
+    ("PATCH", "/api/v1/staff/{staff_id}"),
 }
 
 TAG_ORDER = [
@@ -63,6 +66,7 @@ TAG_ORDER = [
     "finance",
     "dashboard",
     "audit",
+    "staff",
 ]
 TAG_TITLES = {
     "health": "Health",
@@ -73,6 +77,7 @@ TAG_TITLES = {
     "finance": "Finance",
     "dashboard": "Dashboard",
     "audit": "Audit",
+    "staff": "Staff accounts",
 }
 TAG_ROLES = {
     "auth": "Any staff role",
@@ -80,6 +85,7 @@ TAG_ROLES = {
     "finance": "Finance reviewer",
     "dashboard": "Operations manager",
     "audit": "Operations manager",
+    "staff": "Operations manager",
 }
 # Routes that accept more roles than their tag suggests.
 ROUTE_ROLES = {
