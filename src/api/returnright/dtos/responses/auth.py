@@ -13,3 +13,11 @@ class TokenResponse(ResponseDTO):
     token_type: Literal["bearer"] = Field(default="bearer")
     expires_in: int
     role: Role
+
+
+class UserResponse(ResponseDTO):
+    """The signed-in internal user."""
+
+    user_id: int
+    username: str
+    role: Role
