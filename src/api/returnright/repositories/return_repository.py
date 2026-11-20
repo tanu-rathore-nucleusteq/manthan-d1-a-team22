@@ -1,6 +1,6 @@
 """Queries for return requests, their items, photos, inspections and refunds."""
 
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, selectinload
@@ -103,13 +103,13 @@ class ReturnRepository:
         )
         return list(self._session.scalars(statement)), total or 0
 
-    def count_customer_returns_since(self, customer_id: int, since: datetime) -> int:
-        statement = (
-            select(func.count())
-            .select_from(ReturnRequest)
-            .where(ReturnRequest.customer_id == customer_id, ReturnRequest.requested_at >= since)
+    def customer_return_dates_since(self, customer_id: int, since: date) -> list[date]:
+        """The UTC dates on which the customer requested returns, from `since` on."""
+        requested_on = func.date(func.timezone("UTC", ReturnRequest.requested_at))
+        statement = select(requested_on).where(
+            ReturnRequest.customer_id == customer_id, requested_on >= since
         )
-        return self._session.scalar(statement) or 0
+        return list(self._session.scalars(statement))
 
     def order_items_already_returned(self, order_item_ids: list[int]) -> set[int]:
         """Order items that are already in an eligible return item, whatever its status."""

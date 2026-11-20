@@ -17,10 +17,10 @@ from returnright.core.exceptions import (
 )
 from returnright.domain.enums import RefundStatus, ReturnStatus
 from returnright.domain.refund_policy import (
-    needs_finance_approval,
-    refund_amount,
+    item_refund_amount,
     refund_percent,
     refund_total,
+    requires_finance_approval,
 )
 from returnright.domain.state_machine import ensure_can_move
 from returnright.dtos.internal.audit import Actor
@@ -123,8 +123,8 @@ class InspectionService:
                 )
             )
             if percent:
-                amounts[item.return_item_id] = refund_amount(
-                    item.order_item.unit_price, item.quantity, percent
+                amounts[item.return_item_id] = item_refund_amount(
+                    item.order_item.unit_price, item.quantity, grade.grade, grade.decision
                 )
 
         actor = Actor.staff(agent)
@@ -138,7 +138,7 @@ class InspectionService:
             )
         else:
             total = refund_total(amounts.values())
-            needs_approval = needs_finance_approval(
+            needs_approval = requires_finance_approval(
                 total, self._settings.finance_approval_threshold_inr
             )
             for item_id, amount in amounts.items():

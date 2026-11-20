@@ -1,0 +1,50 @@
+{
+  "info": {
+    "name": "ReturnRight - BR 1.2 Not returnable (innerwear, perishables)",
+    "description": "Checks POST /api/v1/orders/lookup refuses innerwear and perishables whatever the date. Every order holds Cotton briefs (Innerwear), Organic honey (Perishables) and a Cotton shirt (Apparel).\n\nBefore running: load tests/api/fixtures/br_1_2_not_returnable_sample.sql into the database and start the API on {{baseUrl}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "email", "value": "br12n.tester@example.com" }
+  ],
+  "item": [
+    {
+      "name": "Day 1 - innerwear and perishables refused, shirt returnable",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "const items = pm.response.json().items;",
+        "const byCat = c => items.find(i => i.category === c);",
+        "pm.test('200 OK', () => pm.response.to.have.status(200));",
+        "pm.test('innerwear refused', () => pm.expect(byCat('Innerwear').eligible).to.be.false);",
+        "pm.test('perishables refused', () => pm.expect(byCat('Perishables').eligible).to.be.false);",
+        "pm.test('shirt still returnable', () => pm.expect(byCat('Apparel').eligible).to.be.true);",
+        "pm.test('innerwear reason names the policy', () => pm.expect(byCat('Innerwear').reason).to.eql(\"Innerwear items can't be returned under our returns policy.\"));",
+        "pm.test('perishables reason names the policy', () => pm.expect(byCat('Perishables').reason).to.eql(\"Perishables items can't be returned under our returns policy.\"));",
+        "pm.test('no window date for refused items', () => pm.expect(byCat('Innerwear').window_ends_on).to.be.null);"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/orders/lookup",
+        "body": { "mode": "raw", "raw": "{\n  \"order_number\": \"BR12N-DAY01\",\n  \"email\": \"{{email}}\"\n}" }
+      }
+    },
+    {
+      "name": "Not delivered - policy reason comes first",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "const items = pm.response.json().items;",
+        "const byCat = c => items.find(i => i.category === c);",
+        "pm.test('200 OK', () => pm.response.to.have.status(200));",
+        "pm.test('nothing is eligible', () => items.forEach(i => pm.expect(i.eligible).to.be.false));",
+        "pm.test('innerwear shows the policy reason, not \"not delivered\"', () => pm.expect(byCat('Innerwear').reason).to.include(\"can't be returned under our returns policy\"));",
+        "pm.test('shirt shows not delivered', () => pm.expect(byCat('Apparel').reason).to.include('not been delivered'));"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/orders/lookup",
+        "body": { "mode": "raw", "raw": "{\n  \"order_number\": \"BR12N-NOTDLV\",\n  \"email\": \"{{email}}\"\n}" }
+      }
+    }
+  ]
+}

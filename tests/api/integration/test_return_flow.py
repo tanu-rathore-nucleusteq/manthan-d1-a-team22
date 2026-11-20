@@ -401,7 +401,7 @@ def test_electronics_on_day_11_are_refused_with_422_and_the_reason(client, world
 
     assert response.status_code == 422
     assert response.json()["code"] == "item_not_eligible"
-    assert "within 10 days" in response.json()["message"]
+    assert "10-day return window" in response.json()["message"]
 
 
 def test_scanning_a_parcel_twice_answers_already_received(client, world):

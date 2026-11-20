@@ -3,7 +3,6 @@ flagged), detail and timeline, QR label, mark shipped and photo upload. Every cu
 proves ownership with the order's email.
 """
 
-from datetime import timedelta
 from typing import BinaryIO
 
 from sqlalchemy.exc import IntegrityError
@@ -19,7 +18,7 @@ from returnright.core.exceptions import (
     PhotoRejectedError,
     ReturnNotFoundError,
 )
-from returnright.domain.customer_flags import FLAG_WINDOW_DAYS, should_flag
+from returnright.domain.customer_flags import check_frequent_returner, window_starts_on
 from returnright.domain.enums import ReturnStatus
 from returnright.dtos.internal.audit import Actor
 from returnright.dtos.requests.returns import CreateReturnRequest
@@ -139,9 +138,12 @@ class ReturnService:
         return self._detail(self._returns.get_by_id(return_request.return_id))
 
     def _flag_frequent_returner(self, return_request: ReturnRequest) -> None:
-        since = return_request.requested_at - timedelta(days=FLAG_WINDOW_DAYS)
-        count = self._returns.count_customer_returns_since(return_request.customer_id, since)
-        if not should_flag(count) or self._customers.has_open_flag(return_request.customer_id):
+        today = self._clock.today()
+        requested_on = self._returns.customer_return_dates_since(
+            return_request.customer_id, window_starts_on(today)
+        )
+        check = check_frequent_returner(requested_on, today)
+        if not check.flagged or self._customers.has_open_flag(return_request.customer_id):
             return
         customer = self._customers.get(return_request.customer_id)
         customer.is_flagged = True
@@ -149,7 +151,7 @@ class ReturnService:
             CustomerFlag(
                 customer_id=customer.customer_id,
                 trigger_return_id=return_request.return_id,
-                returns_in_30d=count,
+                returns_in_30d=check.returns_in_window,
             )
         )
         self._audit.record(
@@ -158,7 +160,7 @@ class ReturnService:
             return_id=return_request.return_id,
             action="FLAGGED",
             actor=Actor.system(),
-            details={"returns_in_30_days": count},
+            details={"returns_in_30_days": check.returns_in_window, "reason": check.reason},
         )
 
     # --- read --------------------------------------------------------------------------------
