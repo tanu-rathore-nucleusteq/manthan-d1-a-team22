@@ -2400,6 +2400,91 @@ button.stepper__button:hover {
   letter-spacing: -0.025em;
 }
 
+.auth__divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-3);
+  font-size: 0.84rem;
+}
+.auth__divider::before,
+.auth__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Signup role picker */
+.role-picker {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.role-picker legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+.role-picker__options {
+  display: grid;
+  gap: 8px;
+}
+.role-option {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    border-color 0.15s var(--ease),
+    background 0.15s var(--ease),
+    box-shadow 0.15s var(--ease);
+}
+.role-option:hover {
+  border-color: var(--border-strong);
+}
+.role-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.role-option:has(input:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+.role-option input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+  flex: none;
+}
+.role-option__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: none;
+}
+.role-option__text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  font-size: 0.9rem;
+}
+.role-option__text span {
+  color: var(--text-2);
+  font-size: 0.84rem;
+}
+
 /* Horizontal bar chart */
 .hbar {
   display: grid;

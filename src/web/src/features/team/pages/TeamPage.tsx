@@ -14,6 +14,7 @@ import { LoadingState } from '../../../components/ui/LoadingState'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { Segmented } from '../../../components/ui/Segmented'
 import { useCreateStaff, useSetStaffActive, useStaff } from '../api'
+import { passwordProblem } from '../../../lib/password'
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
@@ -24,14 +25,6 @@ interface Errors {
   email?: string
   role?: string
   password?: string
-}
-
-/** Same rule as the API: at least 10 characters with a letter and a number. */
-function passwordProblem(password: string): string | undefined {
-  if (password.length < 10) return 'Use at least 10 characters.'
-  if (!/[A-Za-z]/.test(password) || !/\d/.test(password))
-    return 'Use at least one letter and one number.'
-  return undefined
 }
 
 export function TeamPage() {

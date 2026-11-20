@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
 
 import { backend, USE_MOCKS } from '../../api/backend'
@@ -52,7 +52,9 @@ export function LoginPage() {
     },
   })
 
-  if (session && !login.isPending) return <Navigate to={HOME_BY_ROLE[session.role]} replace />
+  // Signed in (or just signed in): go back to the page that asked for a login, else home.
+  if (session && !login.isPending)
+    return <Navigate to={from ?? HOME_BY_ROLE[session.role]} replace />
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -128,6 +130,14 @@ export function LoginPage() {
             {!login.isPending && <Icon name="arrowRight" size={16} />}
           </Button>
         </form>
+
+        <div className="auth__divider">
+          <span>Operations manager adding someone?</span>
+        </div>
+        <Link to="/signup" className="btn btn--secondary btn--block">
+          <Icon name="users" size={16} />
+          Create a staff account
+        </Link>
 
         {USE_MOCKS && (
           <aside className="demo-panel" aria-label="Demo accounts">

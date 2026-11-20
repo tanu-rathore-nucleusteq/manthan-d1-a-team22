@@ -48,10 +48,12 @@ export function AppLayout() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
+  // A full page load to /login, so the staff page's "sign in first" redirect can't remember
+  // itself as the page to return to; the next person who signs in lands on their own home.
   const handleSignOut = () => {
     signOut()
     queryClient.clear()
-    navigate('/login')
+    window.location.assign('/login')
   }
 
   const handleReset = () => {
@@ -202,6 +204,10 @@ function CustomerShell({ onReset }: { onReset: () => void }) {
             <NavLink to="/login" className="btn btn--secondary btn--sm">
               <Icon name="logIn" size={16} />
               Staff sign in
+            </NavLink>
+            <NavLink to="/signup" className="btn btn--primary btn--sm">
+              <Icon name="users" size={16} />
+              Sign up
             </NavLink>
           </div>
         </div>
